@@ -46,6 +46,13 @@ services:
       - 9011:9001
     restart: unless-stopped
 
+  geomap-webapp:
+    build: ./webapp
+    container_name: geomap_webapp
+    ports:
+      - 8020:80
+    restart: unless-stopped
+
   geomap-backend:
     build: ./backend
     container_name: geomap_backend
