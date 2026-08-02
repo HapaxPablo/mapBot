@@ -1,13 +1,18 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
     <title>GeoMap</title>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+    <link
+            href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+            rel="stylesheet"
+    />
+
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 
     <style>
@@ -18,31 +23,40 @@
             height: 100%;
             margin: 0;
             padding: 0;
+            overflow: hidden;
+        }
+
+        .marker {
+            width: 34px;
+            height: 34px;
+            background: #ef4444;
+            border-radius: 50%;
+            border: 3px solid white;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .3);
         }
 
         .popup {
-            max-width: 220px;
+            max-width: 240px;
         }
 
         .popup img {
-            width: 200px;
-            max-height: 150px;
+            width: 220px;
+            height: 120px;
             object-fit: cover;
             border-radius: 8px;
-            margin-bottom: 8px;
         }
 
-        .popup-title {
-            font-weight: 600;
-            margin-bottom: 5px;
+        .popup h3 {
+            margin: 8px 0;
+            font-size: 16px;
         }
 
-        .popup-meta {
-            font-size: 12px;
-            color: #666;
+        .popup p {
+            margin: 0;
+            font-size: 14px;
         }
     </style>
-
 </head>
 
 <body>
@@ -52,10 +66,10 @@
 
 <script>
 
-    const API_URL = "/api/points/";
+    const API_URL = '/api/points/';
 
     const STYLE_URL =
-        "https://api1.krasrm.com/maps/styles/basic/style.json";
+        'https://api1.krasrm.com/maps/styles/basic/style.json';
 
 
     // Красноярск
@@ -65,30 +79,9 @@
     ];
 
 
-    // границы города примерно
-    const KRASNOYARSK_BOUNDS = [
-        [
-            92.3,
-            55.5
-        ],
-        [
-            93.5,
-            56.5
-        ]
-    ];
-
-
-    const tg = window.Telegram?.WebApp;
-
-    if (tg) {
-        tg.ready();
-        tg.expand();
-    }
-
-
     const map = new maplibregl.Map({
 
-        container: "map",
+        container: 'map',
 
         style: STYLE_URL,
 
@@ -96,25 +89,29 @@
 
         zoom: 12,
 
-
         minZoom: 10,
+
         maxZoom: 17,
 
-
-        maxBounds: KRASNOYARSK_BOUNDS,
-
-
         attributionControl: false
+
     });
 
 
     map.addControl(
         new maplibregl.NavigationControl(),
-        "top-right"
+        'top-right'
     );
 
 
-    const markers = [];
+    function escapeHtml(value = '') {
+
+        const div = document.createElement('div');
+
+        div.textContent = value;
+
+        return div.innerHTML;
+    }
 
 
     async function loadPoints() {
@@ -123,97 +120,56 @@
 
             const response = await fetch(API_URL);
 
-
-            if (!response.ok) {
-                throw new Error(
-                    "API error " + response.status
-                );
-            }
-
-
             const data = await response.json();
 
 
-            const points =
-                data.results ?? data;
-
-
-            const bounds =
-                new maplibregl.LngLatBounds();
+            const points = data.results ?? data;
 
 
             points.forEach(point => {
 
 
-                const el =
-                    document.createElement("div");
+                if (!point.lat || !point.lng) {
+                    return;
+                }
 
 
-                el.style.width = "18px";
-                el.style.height = "18px";
-                el.style.borderRadius = "50%";
-                el.style.background = "#ef4444";
-                el.style.border = "3px solid white";
-                el.style.cursor = "pointer";
+                const el = document.createElement('div');
+
+                el.className = 'marker';
 
 
-                const popup =
-                    new maplibregl.Popup({
-                        offset: 20
-                    })
-                        .setHTML(`
+                const popupHTML = `
 
-                    <div class="popup">
-
+                <div class="popup">
 
                     ${
-                            point.photo_url
-                                ?
-                                `
-                        <img src="${point.photo_url}">
-                        `
-                                :
-                                ""
-                        }
+                    point.photo_url
+                        ?
+                        `<img src="${point.photo_url}">`
+                        :
+                        ''
+                }
 
 
-                    <div class="popup-title">
+                    <h3>
                         ${escapeHtml(point.title)}
-                    </div>
+                    </h3>
 
 
-                    ${
-                            point.description
-                                ?
-                                `<div>
-                            ${escapeHtml(point.description)}
-                        </div>`
-                                :
-                                ""
-                        }
+                    <p>
+                        ${escapeHtml(point.description || '')}
+                    </p>
+
+                </div>
+
+            `;
 
 
-                    <div class="popup-meta">
-
-                        👍 ${point.likes}
-                        ·
-                        👎 ${point.dislikes}
-
-
-                        ${
-                            point.username
-                                ?
-                                " · " + escapeHtml(point.username)
-                                :
-                                ""
-                        }
-
-                    </div>
-
-
-                    </div>
-
-                `);
+                const popup = new maplibregl.Popup({
+                    offset: 20
+                })
+                    .setHTML(popupHTML);
 
 
                 new maplibregl.Marker({
@@ -227,31 +183,13 @@
                     .addTo(map);
 
 
-                bounds.extend([
-                    point.lng,
-                    point.lat
-                ]);
-
             });
-
-
-            if (points.length) {
-
-                map.fitBounds(
-                    bounds,
-                    {
-                        padding: 50,
-                        maxZoom: 14
-                    }
-                );
-
-            }
 
 
         } catch (error) {
 
             console.error(
-                "Ошибка загрузки точек:",
+                'Points loading error',
                 error
             );
 
@@ -260,27 +198,30 @@
     }
 
 
-    function escapeHtml(value) {
-
-        const div =
-            document.createElement("div");
-
-        div.textContent =
-            value ?? "";
-
-        return div.innerHTML;
-
-    }
+    map.on('style.load', () => {
 
 
-    map.on(
-        "load",
-        () => {
+        /*
+           Убираем зависимость от glyphs MapTiler.
+           Некоторые стили приходят с:
+           glyphs: https://api.maptiler.com/fonts/...
+        */
 
-            loadPoints();
+        if (map.getStyle().glyphs) {
+
+            map.getStyle().glyphs = undefined;
 
         }
-    );
+
+
+    });
+
+
+    map.on('load', () => {
+
+        loadPoints();
+
+    });
 
 
 </script>
