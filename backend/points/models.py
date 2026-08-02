@@ -1,0 +1,63 @@
+import uuid
+from datetime import timedelta as td
+
+from django.db import models
+from django_minio_backend import MinioBackend
+
+
+def photo_path(instance, filename):
+    return f'points/{instance.id}/{filename}'
+
+
+class Point(models.Model):
+    """Метка на карте, добавленная через Telegram-бота."""
+
+    id = models.UUIDField(
+        primary_key=True, default=uuid.uuid4, editable=False,
+        verbose_name='Идентификатор',
+    )
+    title = models.CharField(max_length=255, verbose_name='Заголовок')
+    description = models.TextField(blank=True, null=True, verbose_name='Описание')
+
+    lat = models.FloatField(verbose_name='Широта')
+    lng = models.FloatField(verbose_name='Долгота')
+
+    photo = models.FileField(
+        upload_to=photo_path,
+        storage=MinioBackend(bucket_name='geomap-media'),
+        null=True, blank=True,
+        verbose_name='Фото',
+    )
+
+    telegram_user_id = models.BigIntegerField(verbose_name='Telegram ID автора')
+    username = models.CharField(max_length=255, blank=True, null=True, verbose_name='Автор')
+
+    likes = models.PositiveIntegerField(default=0, verbose_name='Лайки')
+    dislikes = models.PositiveIntegerField(default=0, verbose_name='Дизлайки')
+
+    is_active = models.BooleanField(default=True, verbose_name='Активна')
+    created = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+
+    class Meta:
+        db_table = 'points'
+        ordering = ('-created',)
+        verbose_name = 'Точка'
+        verbose_name_plural = 'Точки'
+        indexes = [
+            models.Index(fields=['is_active']),
+            models.Index(fields=['telegram_user_id']),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def photo_url(self):
+        """Временная presigned-ссылка на фото (7 дней), как в files.File.url."""
+        if not self.photo:
+            return None
+        from api_helpers import get_minio_client  # noqa: local import, see api_helpers.py
+        client = get_minio_client(external=True)
+        return client.get_presigned_url(
+            'GET', 'geomap-media', str(self.photo), expires=td(days=7),
+        )

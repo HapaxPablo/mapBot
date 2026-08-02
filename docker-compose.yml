@@ -1,0 +1,44 @@
+services:
+  geomap_db:
+    image: postgres:18.3
+    container_name: geomap_db
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASS}
+    volumes:
+      - geomap_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  geomap_backend:
+    build: ./backend
+    container_name: geomap_backend
+    env_file: ./backend/.env
+    ports:
+      - 8010:8010
+    volumes:
+      # карта (map.html) отдаётся тем же контейнером как статика
+      - ./backend/static:/app/static
+    depends_on:
+      - geomap_db
+    restart: unless-stopped
+    # Подключаем ту же docker-сеть, что у rmc_rest_api, чтобы достучаться
+    # до MinIO ("files") и (опционально) до основного nginx/gateway.
+    networks:
+      - default
+      - rmc_rest_api_default
+
+  geomap_bot:
+    build: ./bot
+    container_name: geomap_bot
+    env_file: ./bot/.env
+    depends_on:
+      - geomap_backend
+    restart: unless-stopped
+
+volumes:
+  geomap_db_data:
+
+networks:
+  rmc_rest_api_default:
+    external: true

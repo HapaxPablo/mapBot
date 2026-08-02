@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GeoMap</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  html, body, #map { height: 100%; margin: 0; padding: 0; }
+  .popup-photo { max-width: 200px; border-radius: 8px; display: block; margin-bottom: 6px; }
+  .popup-title { font-weight: 600; margin-bottom: 4px; }
+  .popup-meta { font-size: 12px; color: #666; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+  // ---- Настройки, при необходимости поправить -----------------------------
+  // API нового geomap-бэкенда (см. backend/geomap_api).
+  const API_URL = "https://api1.krasrm.com/maps/";
+
+  // Тайлы существующего tileserver-gl из prod.yml.
+  // ВАЖНО: точный шаблон URL зависит от имени style, заданного в конфиге
+  // tileserver-gl (styles/<style_json_name>). Уточните на
+  // https://api1.krasrm.com/maps/  (там будет список стилей) и поправьте
+  // TILE_STYLE ниже. Пока используется частый дефолт "basic-preview".
+  const TILE_STYLE = "basic-preview";
+  const TILE_URL = `https://api1.krasrm.com/maps/styles/${TILE_STYLE}/{z}/{x}/{y}.png`;
+
+  const CENTER = [56.0184, 92.8672]; // Красноярск, дефолтный центр
+  // ---------------------------------------------------------------------------
+
+  const tg = window.Telegram?.WebApp;
+  if (tg) {
+    tg.ready();
+    tg.expand();
+  }
+
+  const map = L.map('map').setView(CENTER, 12);
+
+  L.tileLayer(TILE_URL, {
+    maxZoom: 19,
+    attribution: '',
+  }).addTo(map);
+
+  const markersLayer = L.layerGroup().addTo(map);
+
+  async function loadPoints() {
+    try {
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const points = data.results ?? data; // на случай пагинации / плоского списка
+
+      markersLayer.clearLayers();
+      const bounds = [];
+
+      points.forEach((p) => {
+        const marker = L.marker([p.lat, p.lng]);
+        const photoHtml = p.photo_url
+          ? `<img class="popup-photo" src="${p.photo_url}" alt="">`
+          : '';
+        marker.bindPopup(`
+          ${photoHtml}
+          <div class="popup-title">${escapeHtml(p.title)}</div>
+          ${p.description ? `<div>${escapeHtml(p.description)}</div>` : ''}
+          <div class="popup-meta">
+            👍 ${p.likes} · 👎 ${p.dislikes}
+            ${p.username ? ` · ${escapeHtml(p.username)}` : ''}
+          </div>
+        `);
+        marker.addTo(markersLayer);
+        bounds.push([p.lat, p.lng]);
+      });
+
+      if (bounds.length) {
+        map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+      }
+    } catch (e) {
+      console.error('Не удалось загрузить точки:', e);
+    }
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+  loadPoints();
+</script>
+</body>
+</html>
