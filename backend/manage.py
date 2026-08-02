@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 import os
 import sys
-
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 
 def main():

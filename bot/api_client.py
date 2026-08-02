@@ -40,3 +40,21 @@ async def list_points() -> list[dict]:
         resp.raise_for_status()
         data = resp.json()
         return data.get("results", data)
+
+async def get_point(point_id: str):
+
+    async with httpx.AsyncClient(
+        base_url=config.BACKEND_URL,
+        timeout=15
+    ) as client:
+
+
+        response = await client.get(
+            f"/api/points/{point_id}/"
+        )
+
+
+        response.raise_for_status()
+
+
+        return response.json()

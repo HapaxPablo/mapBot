@@ -1,95 +1,290 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GeoMap</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<style>
-  html, body, #map { height: 100%; margin: 0; padding: 0; }
-  .popup-photo { max-width: 200px; border-radius: 8px; display: block; margin-bottom: 6px; }
-  .popup-title { font-weight: 600; margin-bottom: 4px; }
-  .popup-meta { font-size: 12px; color: #666; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>GeoMap</title>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+
+    <style>
+        html,
+        body,
+        #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .popup {
+            max-width: 220px;
+        }
+
+        .popup img {
+            width: 200px;
+            max-height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .popup-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .popup-meta {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+
 </head>
+
 <body>
+
 <div id="map"></div>
+
+
 <script>
-  // ---- Настройки, при необходимости поправить -----------------------------
-  // API нового geomap-бэкенда (см. backend/geomap_api).
-  const API_URL = "https://api1.krasrm.com/maps/";
 
-  // Тайлы существующего tileserver-gl из prod.yml.
-  // ВАЖНО: точный шаблон URL зависит от имени style, заданного в конфиге
-  // tileserver-gl (styles/<style_json_name>). Уточните на
-  // https://api1.krasrm.com/maps/  (там будет список стилей) и поправьте
-  // TILE_STYLE ниже. Пока используется частый дефолт "basic-preview".
-  const TILE_STYLE = "basic-preview";
-  const TILE_URL = `https://api1.krasrm.com/maps/styles/${TILE_STYLE}/{z}/{x}/{y}.png`;
+    const API_URL = "/api/points/";
 
-  const CENTER = [56.0184, 92.8672]; // Красноярск, дефолтный центр
-  // ---------------------------------------------------------------------------
+    const STYLE_URL =
+        "https://api1.krasrm.com/maps/styles/basic/style.json";
 
-  const tg = window.Telegram?.WebApp;
-  if (tg) {
-    tg.ready();
-    tg.expand();
-  }
 
-  const map = L.map('map').setView(CENTER, 12);
+    // Красноярск
+    const CENTER = [
+        92.8672,
+        56.0184
+    ];
 
-  L.tileLayer(TILE_URL, {
-    maxZoom: 19,
-    attribution: '',
-  }).addTo(map);
 
-  const markersLayer = L.layerGroup().addTo(map);
+    // границы города примерно
+    const KRASNOYARSK_BOUNDS = [
+        [
+            92.3,
+            55.5
+        ],
+        [
+            93.5,
+            56.5
+        ]
+    ];
 
-  async function loadPoints() {
-    try {
-      const res = await fetch(API_URL);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const points = data.results ?? data; // на случай пагинации / плоского списка
 
-      markersLayer.clearLayers();
-      const bounds = [];
+    const tg = window.Telegram?.WebApp;
 
-      points.forEach((p) => {
-        const marker = L.marker([p.lat, p.lng]);
-        const photoHtml = p.photo_url
-          ? `<img class="popup-photo" src="${p.photo_url}" alt="">`
-          : '';
-        marker.bindPopup(`
-          ${photoHtml}
-          <div class="popup-title">${escapeHtml(p.title)}</div>
-          ${p.description ? `<div>${escapeHtml(p.description)}</div>` : ''}
-          <div class="popup-meta">
-            👍 ${p.likes} · 👎 ${p.dislikes}
-            ${p.username ? ` · ${escapeHtml(p.username)}` : ''}
-          </div>
-        `);
-        marker.addTo(markersLayer);
-        bounds.push([p.lat, p.lng]);
-      });
-
-      if (bounds.length) {
-        map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
-      }
-    } catch (e) {
-      console.error('Не удалось загрузить точки:', e);
+    if (tg) {
+        tg.ready();
+        tg.expand();
     }
-  }
 
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str ?? '';
-    return div.innerHTML;
-  }
 
-  loadPoints();
+    const map = new maplibregl.Map({
+
+        container: "map",
+
+        style: STYLE_URL,
+
+        center: CENTER,
+
+        zoom: 12,
+
+
+        minZoom: 10,
+        maxZoom: 17,
+
+
+        maxBounds: KRASNOYARSK_BOUNDS,
+
+
+        attributionControl: false
+    });
+
+
+    map.addControl(
+        new maplibregl.NavigationControl(),
+        "top-right"
+    );
+
+
+    const markers = [];
+
+
+    async function loadPoints() {
+
+        try {
+
+            const response = await fetch(API_URL);
+
+
+            if (!response.ok) {
+                throw new Error(
+                    "API error " + response.status
+                );
+            }
+
+
+            const data = await response.json();
+
+
+            const points =
+                data.results ?? data;
+
+
+            const bounds =
+                new maplibregl.LngLatBounds();
+
+
+            points.forEach(point => {
+
+
+                const el =
+                    document.createElement("div");
+
+
+                el.style.width = "18px";
+                el.style.height = "18px";
+                el.style.borderRadius = "50%";
+                el.style.background = "#ef4444";
+                el.style.border = "3px solid white";
+                el.style.cursor = "pointer";
+
+
+                const popup =
+                    new maplibregl.Popup({
+                        offset: 20
+                    })
+                        .setHTML(`
+
+                    <div class="popup">
+
+
+                    ${
+                            point.photo_url
+                                ?
+                                `
+                        <img src="${point.photo_url}">
+                        `
+                                :
+                                ""
+                        }
+
+
+                    <div class="popup-title">
+                        ${escapeHtml(point.title)}
+                    </div>
+
+
+                    ${
+                            point.description
+                                ?
+                                `<div>
+                            ${escapeHtml(point.description)}
+                        </div>`
+                                :
+                                ""
+                        }
+
+
+                    <div class="popup-meta">
+
+                        👍 ${point.likes}
+                        ·
+                        👎 ${point.dislikes}
+
+
+                        ${
+                            point.username
+                                ?
+                                " · " + escapeHtml(point.username)
+                                :
+                                ""
+                        }
+
+                    </div>
+
+
+                    </div>
+
+                `);
+
+
+                new maplibregl.Marker({
+                    element: el
+                })
+                    .setLngLat([
+                        point.lng,
+                        point.lat
+                    ])
+                    .setPopup(popup)
+                    .addTo(map);
+
+
+                bounds.extend([
+                    point.lng,
+                    point.lat
+                ]);
+
+            });
+
+
+            if (points.length) {
+
+                map.fitBounds(
+                    bounds,
+                    {
+                        padding: 50,
+                        maxZoom: 14
+                    }
+                );
+
+            }
+
+
+        } catch (error) {
+
+            console.error(
+                "Ошибка загрузки точек:",
+                error
+            );
+
+        }
+
+    }
+
+
+    function escapeHtml(value) {
+
+        const div =
+            document.createElement("div");
+
+        div.textContent =
+            value ?? "";
+
+        return div.innerHTML;
+
+    }
+
+
+    map.on(
+        "load",
+        () => {
+
+            loadPoints();
+
+        }
+    );
+
+
 </script>
+
+
 </body>
 </html>

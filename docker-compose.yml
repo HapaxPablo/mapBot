@@ -1,5 +1,16 @@
 services:
-  geomap_db:
+  nginx:
+    image: nginx:alpine
+    container_name: geomap-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - geomap-backend
+      - geomap-minio
+
+  geomap-db:
     image: postgres:18.3
     container_name: geomap_db
     environment:
@@ -7,38 +18,57 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASS}
     volumes:
-      - geomap_db_data:/var/lib/postgresql/data
+      - geomap_db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
-  geomap_backend:
+  geomap-minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: geomap_minio
+    env_file: ./.env
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - geomap_minio_data:/data
+    ports:
+      - 9010:9000
+      - 9011:9001
+    restart: unless-stopped
+
+  geomap-backend:
     build: ./backend
     container_name: geomap_backend
-    env_file: ./backend/.env
+    env_file: ./.env
     ports:
       - 8010:8010
     volumes:
-      # карта (map.html) отдаётся тем же контейнером как статика
-      - ./backend/static:/app/static
+      - ./backend/staticfiles:/app/staticfiles
     depends_on:
-      - geomap_db
+      geomap-db:
+        condition: service_healthy
+      geomap-minio:
+        condition: service_healthy
     restart: unless-stopped
-    # Подключаем ту же docker-сеть, что у rmc_rest_api, чтобы достучаться
-    # до MinIO ("files") и (опционально) до основного nginx/gateway.
-    networks:
-      - default
-      - rmc_rest_api_default
 
-  geomap_bot:
+  geomap-bot:
     build: ./bot
     container_name: geomap_bot
-    env_file: ./bot/.env
+    env_file: ./.env
     depends_on:
-      - geomap_backend
+      - geomap-backend
     restart: unless-stopped
 
 volumes:
   geomap_db_data:
-
-networks:
-  rmc_rest_api_default:
-    external: true
+  geomap_minio_data:

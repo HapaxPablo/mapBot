@@ -1,62 +1,72 @@
 # Локальный запуск GeoMapBot
 
 Пошаговая инструкция для проверки на своей машине, без хостинга и домена.
+Обновлено под текущий `docker-compose.yml`: свой собственный MinIO
+(сервис `geomap_minio`), без nginx (карта отдаётся тем же контейнером,
+что и API), один общий `.env` в корне проекта для backend и бота.
 
 ## 0. Что понадобится
 
 - Docker + Docker Compose
 - Токен бота от [@BotFather](https://t.me/BotFather)
 - [ngrok](https://ngrok.com/download) — для публичного https-адреса под Telegram WebApp
-  (можно пропустить, если пока не тестируете карту — см. п.7)
+  (можно пропустить, если пока не тестируете карту — см. п.8)
 
 ---
 
-## 1. Распаковать архив и подготовить `.env`
+## 1. Подготовить `.env` в корне проекта
 
-```bash
-cd geomap-bot
-cp .env.example .env
-```
-
-Откройте `.env` и впишите:
+Один файл `.env` рядом с `docker-compose.yml` — его читают и backend, и
+бот, и MinIO (через `env_file: ./.env` у каждого сервиса).
 
 ```env
+# --- Django backend ---
 SECRET_KEY=local-dev-secret
 DEBUG=true
 ALLOWED_HOSTS=*
 
+# --- Postgres ---
 POSTGRES_DB=geomap
 POSTGRES_USER=geomap
 POSTGRES_PASS=geomap
-POSTGRES_HOST=db
+POSTGRES_HOST=geomap_db
 POSTGRES_PORT=5432
 
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=minioadmin123
-MINIO_ACCESS_KEY=
-MINIO_SECRET_KEY=
-MINIO_ENDPOINT=minio:9000
-MINIO_EXTERNAL_ENDPOINT=localhost:9000
+# --- MinIO (свой, поднимается тем же docker-compose) ---
+MINIO_ROOT_USER=geomap_admin
+MINIO_ROOT_PASSWORD=придумайте_надёжный_пароль
+MINIO_ENDPOINT=geomap_minio:9000
+MINIO_EXTERNAL_ENDPOINT=localhost:9010
 MINIO_HTTPS=false
 MINIO_EXTERNAL_HTTPS=false
 MINIO_REGION=us-east-1
+MINIO_STORAGE_ACCESS_KEY=geomap_admin
+MINIO_STORAGE_SECRET_KEY=придумайте_надёжный_пароль
 
+# --- Бот <-> backend ---
 BOT_API_KEY=local-dev-key
 
+# --- Бот ---
 BOT_TOKEN=<токен от BotFather>
-BACKEND_API_URL=http://backend:8000/api
+# внутри docker-сети бот стучится к backend по имени сервиса, не localhost
+BACKEND_URL=http://geomap_backend:8010
 WEBAPP_URL=https://example.com
 ADMIN_ID=0
 ```
 
-`MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` и `WEBAPP_URL` заполним чуть позже — сначала нужны сами сервисы.
+`MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` и
+`MINIO_STORAGE_ACCESS_KEY`/`MINIO_STORAGE_SECRET_KEY` здесь совпадают —
+этого достаточно для локального теста. Отдельный ограниченный ключ можно
+создать позже через консоль (п.4).
+
+`WEBAPP_URL` заполним в п.8, когда поднимется ngrok.
 
 ---
 
-## 2. Поднять базу и MinIO
+## 2. Поднять базу и свой MinIO
 
 ```bash
-docker compose up -d db minio
+docker compose up -d geomap_db geomap_minio
 ```
 
 Подождите ~10 секунд, пока пройдут healthcheck'и:
@@ -65,37 +75,26 @@ docker compose up -d db minio
 docker compose ps
 ```
 
-Оба должны быть `healthy`.
+Оба сервиса должны быть `healthy`.
 
 ---
 
-## 3. Создать ключ доступа MinIO
-
-1. Откройте консоль MinIO: **http://localhost:9001**
-2. Войдите как `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` (`minioadmin` / `minioadmin123`)
-3. Слева **Access Keys → Create access key**
-4. Скопируйте `Access Key` и `Secret Key` в `.env`:
-
-```env
-MINIO_ACCESS_KEY=<полученный access key>
-MINIO_SECRET_KEY=<полученный secret key>
-```
-
----
-
-## 4. Собрать и поднять backend
+## 3. Собрать и поднять backend
 
 ```bash
-docker compose up -d --build backend
+docker compose up -d --build geomap_backend
 ```
 
-При старте контейнер сам выполнит `migrate`. Проверьте логи:
+При старте контейнер сам выполнит `migrate`, а `django-minio-backend`
+(при `MINIO_CONSISTENCY_CHECK_ON_START: True` в `settings.py`) сам создаст
+бакет `geomap-media` в вашем MinIO. Проверьте логи:
 
 ```bash
-docker compose logs -f backend
+docker compose logs -f geomap_backend
 ```
 
-Должно быть видно `Starting gunicorn` без ошибок подключения к БД/MinIO. Остановите просмотр логов `Ctrl+C` (сам контейнер продолжит работать).
+Должно быть видно `Starting gunicorn` без ошибок подключения к БД/MinIO.
+Остановите просмотр логов `Ctrl+C` (сам контейнер продолжит работать).
 
 Проверка, что API отвечает:
 
@@ -107,70 +106,118 @@ curl http://localhost:8010/api/points/
 
 ---
 
+## 4. (Опционально) Отдельный access key для MinIO
+
+Если не хотите использовать root-креды напрямую:
+
+1. Откройте консоль MinIO: **http://localhost:9011**
+2. Войдите как `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` из `.env`
+3. Слева **Access Keys → Create access key**
+4. Скопируйте `Access Key` / `Secret Key` в `.env` вместо
+   `MINIO_STORAGE_ACCESS_KEY` / `MINIO_STORAGE_SECRET_KEY` и пересоберите backend:
+
+```bash
+docker compose up -d --build geomap_backend
+```
+
+---
+
 ## 5. Создать суперпользователя для админки
 
 ```bash
 docker exec -it geomap_backend python manage.py createsuperuser
 ```
 
-Админка будет доступна на **http://localhost:8010/admin/** — там же видны все созданные точки, можно смотреть/чистить руками во время тестов.
+Админка доступна на **http://localhost:8010/admin/** — там же видны все
+созданные точки, можно смотреть/чистить руками во время тестов.
 
 ---
 
-## 6. Поднять nginx (отдаёт webapp + проксирует `/api`)
+## 6. Проверить `map.html`
 
-```bash
-docker compose up -d --build nginx
+Убедитесь, что в `backend/static/map.html` `API_URL` указывает на **свой**
+backend, а не на тайлсервер (частая ошибка):
+
+```js
+const API_URL = "/api/points/";   // относительный путь — работает и с localhost, и с ngrok
 ```
 
-Проверка:
+Тайлы (`TILE_URL`) — внешний публичный сервер, трогать не нужно, он не
+зависит ни от localhost, ни от ngrok.
 
-```bash
-curl http://localhost:8080/api/points/
-```
-
-Должен вернуть то же самое, что и в п.4 — значит проксирование работает.
+Проверка прямо в браузере (без Telegram):
+**http://localhost:8010/static/map.html**
 
 ---
 
-## 7. Публичный https-адрес для карты (WebApp)
-
-Telegram открывает WebApp только по `https`, поэтому нужен туннель до вашего `localhost:8080`.
+## 7. Поднять бота
 
 ```bash
-ngrok http 8080
+docker compose up -d --build geomap_bot
+docker compose logs -f geomap_bot
+```
+
+Должно появиться `🚀 GeoMapBot запущен`.
+
+---
+
+## 8. Публичный https-адрес для карты (WebApp)
+
+Telegram открывает WebApp только по `https`, поэтому нужен туннель до
+вашего `localhost:8010`.
+
+```bash
+ngrok http 8010
 ```
 
 В выводе будет строка вида:
 
 ```
-Forwarding  https://a1b2c3d4.ngrok-free.app -> http://localhost:8080
+Forwarding  https://a1b2c3d4.ngrok-free.app -> http://localhost:8010
 ```
 
 Скопируйте `https://a1b2c3d4.ngrok-free.app` в `.env`:
 
 ```env
-WEBAPP_URL=https://a1b2c3d4.ngrok-free.app
+WEBAPP_URL=https://a1b2c3d4.ngrok-free.app/static/map.html
 ```
 
-**Важно:** ngrok-адрес меняется при каждом перезапуске (на бесплатном тарифе) — после рестарта туннеля нужно обновлять `WEBAPP_URL` и перезапускать бота (п.8).
-
-Если карту пока не тестируете — можно пропустить этот пункт, оставить `WEBAPP_URL` заглушкой и просто не нажимать кнопку «🗺 Карта» (остальной функционал бота работает без неё).
-
----
-
-## 8. Поднять бота
+Пересоберите бота, чтобы новый `WEBAPP_URL` подхватился:
 
 ```bash
-docker compose up -d --build bot
-docker compose logs -f bot
+docker compose up -d --build geomap_bot
 ```
 
-Должно появиться `🚀 GeoMapBot запущен`. Если меняли `WEBAPP_URL` после первого запуска:
+**Важно:** ngrok-адрес меняется при каждом перезапуске (на бесплатном
+тарифе) — после рестарта туннеля нужно обновлять `WEBAPP_URL` и
+пересобирать бота заново.
 
-```bash
-docker compose up -d --build bot
-```
+### Фото и ngrok
+
+По умолчанию `photo_url` строится из `MINIO_EXTERNAL_ENDPOINT=localhost:9010`
+— это доступно только вам самим, но не телефону, который открывает карту
+через ngrok. Если нужно проверить фото именно через Telegram WebApp:
+
+1. Поднимите второй туннель для MinIO:
+   ```bash
+   ngrok http 9010
+   ```
+   (на бесплатном тарифе может понадобиться `ngrok.yml` с несколькими
+   туннелями либо платный план — по умолчанию разрешён один туннель).
+2. Впишите полученный домен в `.env`:
+   ```env
+   MINIO_EXTERNAL_ENDPOINT=xxxx.ngrok-free.app
+   MINIO_EXTERNAL_HTTPS=true
+   ```
+3. Пересоберите backend:
+   ```bash
+   docker compose up -d --build geomap_backend
+   ```
+
+Если фото сейчас не критично для теста — проще пропустить этот раздел и
+проверять точки с фото только локально через админку
+(`http://localhost:8010/admin/points/point/`), а через Telegram/ngrok
+тестировать только карту и создание точек без фото.
 
 ---
 
@@ -181,7 +228,7 @@ docker compose up -d --build bot
    отправьте фото или напишите «Пропустить»
 3. Проверьте, что точка появилась:
    - в админке: http://localhost:8010/admin/points/point/
-   - через API: `curl http://localhost:8080/api/points/`
+   - через API: `curl http://localhost:8010/api/points/`
 4. **🗺 Карта** (если настроен ngrok) — должна открыться карта с меткой
 
 ---
@@ -190,11 +237,15 @@ docker compose up -d --build bot
 
 | Симптом | Причина / решение |
 |---|---|
-| Бот не отвечает | Проверьте `BOT_TOKEN`, посмотрите `docker compose logs bot` |
-| `❌ Не удалось добавить точку` | Проверьте `docker compose logs backend` — скорее всего не совпадает `BOT_API_KEY` в `.env` (он используется и ботом, и backend'ом из одного файла, но если меняли на лету — нужен рестарт обоих: `docker compose up -d --build backend bot`) |
+| Бот не отвечает | Проверьте `BOT_TOKEN`, посмотрите `docker compose logs geomap_bot` |
+| `❌ Не удалось добавить точку` | Проверьте `docker compose logs geomap_backend`. Т.к. `.env` теперь один и общий, несовпадения `BOT_API_KEY` быть не должно — но после изменения `.env` нужен рестарт обоих: `docker compose up -d --build geomap_backend geomap_bot` |
+| Бот не может достучаться до backend | `BACKEND_URL` в `.env` должен быть `http://geomap_backend:8010` (имя docker-сервиса), а не `http://localhost:8010` — изнутри контейнера `localhost` указывает на сам контейнер бота, а не на backend |
+| На карте нет точек, хотя в API они есть | Проверьте `API_URL` в `backend/static/map.html` — должно быть `/api/points/`, а не адрес тайлсервера |
 | Кнопка «Карта» не открывается / белый экран | `WEBAPP_URL` не https, ngrok-туннель уже не активен, либо не пересобирали бота после смены `WEBAPP_URL` |
-| На карте нет тайлов (пустой фон) | Это ожидаемо локально — тайлы грузятся с `https://api1.krasrm.com/maps/`, а не с вашей машины. Если и там тайлы не подгружаются — проверьте актуальный `TILESET_ID` в `webapp/index.html` (см. `README.md`) |
-| Фото не открывается по `photo_url` | `MINIO_EXTERNAL_ENDPOINT` должен быть адресом, доступным из браузера — `localhost:9000` подходит только если открываете webapp тоже локально; при открытии через ngrok фото с `localhost:9000` браузер пользователя не увидит (это его локальный адрес, не ваш). Для полноценной проверки фото тоже нужно тунелировать MinIO либо временно тестировать без фото |
+| На карте нет тайлов (пустой фон) | Тайлы грузятся с внешнего `https://api1.krasrm.com/maps/`, локальная сеть тут ни при чём. Если и там не подгружаются — проверьте актуальный `TILE_STYLE` в `map.html` |
+| Фото не открывается по `photo_url` | `MINIO_EXTERNAL_ENDPOINT` должен быть доступен из браузера, который открывает карту. `localhost:9010` подходит только если сами открываете карту с этой же машины; при доступе через ngrok нужен отдельный туннель для MinIO (см. раздел «Фото и ngrok») |
+| Backend падает с ошибкой "bucket does not exist" | Проверьте, что в `settings.py` стоит `MINIO_CONSISTENCY_CHECK_ON_START: True`, и что `geomap_minio` был healthy до старта `geomap_backend` |
+| После смены `.env` ничего не поменялось | `env_file` подхватывается только при пересоздании контейнера — `docker compose restart` не перечитывает `.env`, нужен `docker compose up -d --build <сервис>` |
 
 ---
 
