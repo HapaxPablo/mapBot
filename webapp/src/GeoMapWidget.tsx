@@ -23,9 +23,10 @@ export default function GeoMapWidget() {
   const [points, setPoints] = useState<Point[]>([]);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/points/`)
+    fetch(`${API_URL}api/points/`)
       .then((r) => r.json())
-      .then((data) => setPoints(data.results ?? data));
+      .then((data) => setPoints(data.results ?? data))
+      .catch((err) => console.error("Failed to load points:", err));
   }, []);
 
   useEffect(() => {

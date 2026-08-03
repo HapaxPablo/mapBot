@@ -47,7 +47,11 @@ services:
     restart: unless-stopped
 
   geomap-webapp:
-    build: ./webapp
+    build:
+      context: ./webapp
+      args:
+        - VITE_API_URL=${VITE_API_URL}
+        - VITE_MAP_STYLE_URL=${VITE_MAP_STYLE_URL}
     container_name: geomap_webapp
     ports:
       - 8020:80
