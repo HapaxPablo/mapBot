@@ -5,3 +5,6 @@ class PointsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'points'
     verbose_name = 'Точки карты'
+
+    def ready(self):
+        import points.signals  # noqa: F401
