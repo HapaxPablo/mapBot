@@ -1,13 +1,12 @@
 // webapp/src/App.tsx
-import { useEffect } from "react";
 import GeoMapWidget from "./GeoMapWidget";
+import { useAuth } from "./auth/AuthProvider";
 
 export default function App() {
-  useEffect(() => {
-    const tg = (window as any).Telegram?.WebApp;
-    tg?.ready();
-    tg?.expand();
-  }, []);
+  const { loading, error, user } = useAuth();
 
-  return <GeoMapWidget />;
+  if (loading) return <div className="auth-state">Выполняется вход через Telegram…</div>;
+  if (error || !user) return <div className="auth-state auth-error">{error ?? "Пользователь не найден."}</div>;
+
+  return <GeoMapWidget user={user} />;
 }

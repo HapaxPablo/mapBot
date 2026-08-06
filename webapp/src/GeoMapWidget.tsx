@@ -1,77 +1,93 @@
-// webapp/src/GeoMapWidget.tsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as maplibre from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { type TelegramUser } from "./auth/AuthProvider";
+import { MAP_CENTER, PERSONAL_ROLES, ROLE_LABELS, STYLE_URL } from "./map/constants";
+import { createPointMarker } from "./map/pointMarkers";
+import { requestPersonalPoints, usePointsSocket } from "./map/usePointsSocket";
+import type { Point } from "./map/types";
 
-interface Point {
-  id: string;
-  title: string;
-  description: string | null;
-  lat: number;
-  lng: number;
-  photo_url: string | null;
-  likes: number;
-  dislikes: number;
-}
+export default function GeoMapWidget({ user }: { user: TelegramUser }) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibre.Map | null>(null);
+  const markersRef = useRef<maplibre.Marker[]>([]);
 
-const STYLE_URL = import.meta.env.VITE_MAP_STYLE_URL as string;
-const API_URL = import.meta.env.VITE_API_URL as string;
-
-export default function GeoMapWidget() {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<maplibre.Map | null>(null);
   const [points, setPoints] = useState<Point[]>([]);
+  const [personalPoints, setPersonalPoints] = useState<Point[]>([]);
+  const [showPersonal, setShowPersonal] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
+
+  const canViewPersonal = PERSONAL_ROLES.includes(
+    user.role as typeof PERSONAL_ROLES[number],
+  );
+  const socketRef = usePointsSocket({
+    onAllPoints: setPoints,
+    onPersonalPoints: setPersonalPoints,
+  });
 
   useEffect(() => {
-    fetch(`${API_URL}api/points/`)
-      .then((r) => r.json())
-      .then((data) => setPoints(data.results ?? data))
-      .catch((err) => console.error("Failed to load points:", err));
-  }, []);
+    if (showPersonal && canViewPersonal) {
+      requestPersonalPoints(socketRef.current);
+    }
+  }, [canViewPersonal, showPersonal, socketRef]);
 
   useEffect(() => {
-    if (!mapContainer.current || map.current) return;
+    const container = mapContainerRef.current;
+    if (!container || mapRef.current) return;
 
-    map.current = new maplibre.Map({
-      container: mapContainer.current,
+    const map = new maplibre.Map({
+      container,
       style: STYLE_URL,
-      center: [92.8672, 56.0184],
+      center: MAP_CENTER,
       zoom: 12,
       attributionControl: false,
     });
 
-    map.current.addControl(new maplibre.NavigationControl(), "top-right");
+    map.addControl(new maplibre.NavigationControl(), "top-right");
+    map.once("load", () => setMapReady(true));
+    mapRef.current = map;
+
+    return () => {
+      markersRef.current.forEach((marker) => marker.remove());
+      markersRef.current = [];
+      map.remove();
+      mapRef.current = null;
+    };
   }, []);
 
+  const visiblePoints = useMemo(
+    () => showPersonal && canViewPersonal ? personalPoints : points,
+    [canViewPersonal, personalPoints, points, showPersonal],
+  );
+
   useEffect(() => {
-    if (!map.current || points.length === 0) return;
+    if (!mapReady || !mapRef.current) return;
 
-    points.forEach((point) => {
-      const el = document.createElement("div");
-      el.style.cssText =
-        "width:34px;height:34px;background:#ef4444;border-radius:50%;border:3px solid white;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)";
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = visiblePoints.map((point) =>
+      createPointMarker(mapRef.current!, point, {
+        canDeactivate: showPersonal && canViewPersonal,
+      }),
+    );
+  }, [canViewPersonal, mapReady, showPersonal, visiblePoints]);
 
-      const popup = new maplibre.Popup({ offset: 20 }).setHTML(`
-        <div style="max-width:240px">
-          ${point.photo_url ? `<img src="${point.photo_url}" style="width:220px;height:120px;object-fit:cover;border-radius:8px">` : ""}
-          <h3 style="margin:8px 0;font-size:16px">${escapeHtml(point.title)}</h3>
-          <p style="margin:0;font-size:14px">${escapeHtml(point.description || "")}</p>
-          <p style="margin:4px 0 0;font-size:12px;color:#666">❤️ ${point.likes} · 👎 ${point.dislikes}</p>
-        </div>
-      `);
-
-      new maplibre.Marker({ element: el })
-        .setLngLat([point.lng, point.lat])
-        .setPopup(popup)
-        .addTo(map.current!);
-    });
-  }, [points]);
-
-  return <div ref={mapContainer} style={{ width: "100%", height: "100vh" }} />;
-}
-
-function escapeHtml(value = "") {
-  const div = document.createElement("div");
-  div.textContent = value;
-  return div.innerHTML;
+  return (
+    <div className="map-shell">
+      <div className="map-toolbar">
+        <span>{user.first_name || user.username || "Пользователь"}</span>
+        <span className="role-badge">{ROLE_LABELS[user.role]}</span>
+        {canViewPersonal && (
+          <button
+            type="button"
+            className={showPersonal ? "layer-button active" : "layer-button"}
+            onClick={() => setShowPersonal((visible) => !visible)}
+            aria-pressed={showPersonal}
+          >
+            {showPersonal ? "Все точки" : "Мои точки"}
+          </button>
+        )}
+      </div>
+      <div ref={mapContainerRef} className="map-container" />
+    </div>
+  );
 }

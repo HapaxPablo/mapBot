@@ -66,6 +66,47 @@ body {
   margin: 0;
 }
 
+.auth-state {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.auth-error { color: #b42318; }
+
+.map-shell, .map-container { width: 100%; height: 100svh; }
+.map-toolbar {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+}
+.role-badge { color: #6941c6; font-size: 12px; }
+.map-toolbar button { border: 0; border-radius: 7px; padding: 6px 9px; cursor: pointer; }
+.layer-button { background: #f1f0f4; color: var(--text-h); }
+.layer-button.active { background: var(--accent); color: white; }
+.layer-type-select { border: 0; border-radius: 7px; padding: 6px 8px; color: var(--text-h); background: #f1f0f4; }
+.point-marker {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .3));
+}
+.point-marker-icon { display: inline-flex; }
+
 h1,
 h2 {
   font-family: var(--heading);
