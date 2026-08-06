@@ -27,9 +27,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework.authtoken',
     'corsheaders',
     'django_minio_backend',
     'rest_framework',
+    'channels',
+    'users',
     'points',
 ]
 
@@ -58,6 +61,13 @@ TEMPLATES = [{
 }]
 
 WSGI_APPLICATION = 'geomap_api.wsgi.application'
+ASGI_APPLICATION = 'geomap_api.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 # ------------------------------- DATABASE ---------------------------------- #
 # По умолчанию sqlite для лёгкого старта, можно переключить на postgres из .env
@@ -132,6 +142,9 @@ STORAGES = {
 # ------------------------------- REST / CORS -------------------------------- #
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.AllowAny',),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'points.authentication.TokenAuthenticationWithoutApiKey',
+    ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 100,
 }
@@ -142,3 +155,12 @@ CORS_ALLOW_ALL_ORIGINS = True
 # Секретный ключ, которым бот подписывает свои запросы на запись (создание точек,
 # лайки/дизлайки, загрузка фото). Обычные GET-запросы (для карты) открыты всем.
 BOT_API_KEY = os.environ.get('BOT_API_KEY', 'change-me')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
+TELEGRAM_INIT_DATA_MAX_AGE = int(os.environ.get('TELEGRAM_INIT_DATA_MAX_AGE', 86400))
+TELEGRAM_ADMIN_IDS = {
+    int(value.strip())
+    for value in os.environ.get(
+        'TELEGRAM_ADMIN_IDS', os.environ.get('ADMIN_ID', '')
+    ).split(',')
+    if value.strip().isdigit()
+}
