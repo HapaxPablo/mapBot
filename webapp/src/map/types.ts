@@ -16,3 +16,10 @@ export interface PointsMessage {
   scope?: "all" | "personal";
   points?: Point[];
 }
+
+export interface PointBounds {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+}

@@ -9,7 +9,6 @@ export interface TelegramUser {
   username: string;
   first_name: string;
   last_name: string;
-  phone_number: string;
   role: Role;
 }
 
@@ -39,7 +38,7 @@ const permissions: Record<Permission, Role[]> = {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<TelegramUser | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem(TOKEN_KEY));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!response.ok) throw new Error((await response.json()).detail ?? "Не удалось войти.");
 
         const data = await response.json() as { user: TelegramUser; token: string };
-        localStorage.setItem(TOKEN_KEY, data.token);
+        sessionStorage.setItem(TOKEN_KEY, data.token);
         setToken(data.token);
         setUser(data.user);
       } catch (authError) {

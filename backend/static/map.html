@@ -146,7 +146,7 @@
                     ${
                     point.photo_url
                         ?
-                        `<img src="${point.photo_url}">`
+                        `<img src="${escapeHtml(point.photo_url)}">`
                         :
                         ''
                 }
