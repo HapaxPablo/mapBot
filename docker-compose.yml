@@ -7,8 +7,17 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - geomap-backend
-      - geomap-minio
+      geomap-backend:
+        condition: service_healthy
+      geomap-minio:
+        condition: service_healthy
+      geomap-webapp:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/api/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   geomap-db:
     image: postgres:18.3
@@ -23,6 +32,16 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  geomap-redis:
+    image: redis:7-alpine
+    container_name: geomap_redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
       retries: 5
     restart: unless-stopped
 
@@ -42,8 +61,8 @@ services:
     volumes:
       - geomap_minio_data:/data
     ports:
-      - 9010:9000
-      - 9011:9001
+      - 127.0.0.1:9010:9000
+      - 127.0.0.1:9011:9001
     restart: unless-stopped
 
   geomap-webapp:
@@ -54,7 +73,12 @@ services:
         - VITE_MAP_STYLE_URL=${VITE_MAP_STYLE_URL}
     container_name: geomap_webapp
     ports:
-      - 8020:80
+      - 127.0.0.1:8020:80
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   geomap-backend:
@@ -62,13 +86,22 @@ services:
     container_name: geomap_backend
     env_file: ./.env
     ports:
-      - 8010:8010
+      - 127.0.0.1:8010:8010
     volumes:
       - ./backend/staticfiles:/app/staticfiles
+    environment:
+      - REDIS_URL=redis://geomap-redis:6379/0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/api/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
       geomap-db:
         condition: service_healthy
       geomap-minio:
+        condition: service_healthy
+      geomap-redis:
         condition: service_healthy
     restart: unless-stopped
 
@@ -76,8 +109,13 @@ services:
     build: ./bot
     container_name: geomap_bot
     env_file: ./.env
+    environment:
+      - REDIS_URL=redis://geomap-redis:6379/1
     depends_on:
-      - geomap-backend
+      geomap-backend:
+        condition: service_healthy
+      geomap-redis:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

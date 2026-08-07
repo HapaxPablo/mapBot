@@ -12,13 +12,15 @@ load_dotenv(BASE_DIR.parent / '.env')
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key')
 DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
-ALLOWED_HOSTS = os.environ.get(
-    'ALLOWED_HOSTS',
-    'localhost,127.0.0.1'
-).split(',')
+APP_ENV = os.environ.get('APP_ENV', 'development').strip().lower()
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    if host.strip()
+]
 CSRF_TRUSTED_ORIGINS = os.environ.get(
     'CSRF_TRUSTED_ORIGINS',
-    ''
+    '',
 ).split(',')
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -41,6 +43,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'geomap_api.middleware.AllowLocalNullOriginMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -63,15 +66,33 @@ TEMPLATES = [{
 WSGI_APPLICATION = 'geomap_api.wsgi.application'
 ASGI_APPLICATION = 'geomap_api.asgi.application'
 
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-    },
-}
+REDIS_URL = os.environ.get('REDIS_URL', '').strip()
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {'hosts': [REDIS_URL]},
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 # ------------------------------- DATABASE ---------------------------------- #
-# По умолчанию sqlite для лёгкого старта, можно переключить на postgres из .env
-if os.environ.get('POSTGRES_DB'):
+# По умолчанию sqlite для лёгкого старта, можно переключить на postgres из .env.
+# Test mode deliberately ignores production database variables so CI can run
+# without a PostgreSQL service.
+if os.environ.get('TESTING', '').lower() in {'1', 'true', 'yes'}:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+        }
+    }
+elif os.environ.get('POSTGRES_DB'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -93,7 +114,7 @@ else:
 LANGUAGE_CODE = 'ru'
 TIME_ZONE = 'Asia/Krasnoyarsk'
 USE_I18N = True
-USE_TZ = False
+USE_TZ = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 STATIC_URL = '/static/'
@@ -104,7 +125,7 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 # --------------------------------- MINIO ------------------------------------ #
-# Хранилище фото точек, отдельный бакет от rmc_rest_api, но тот же MinIO-инстанс
+# Хранилище фото точек, отдельный бакет
 # можно переиспользовать (см. MINIO_ENDPOINT в .env главного проекта).
 MINIO_ENDPOINT = os.environ.get('MINIO_ENDPOINT', 'files:9000')
 MINIO_ACCESS_KEY = os.environ.get('MINIO_STORAGE_ACCESS_KEY')
@@ -147,16 +168,30 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 100,
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '120/minute',
+        'user': '240/minute',
+    },
 }
 
-# WebApp читает карту из браузера Telegram — открыт для всех источников.
-CORS_ALLOW_ALL_ORIGINS = True
+DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
+
+
 
 # Секретный ключ, которым бот подписывает свои запросы на запись (создание точек,
 # лайки/дизлайки, загрузка фото). Обычные GET-запросы (для карты) открыты всем.
 BOT_API_KEY = os.environ.get('BOT_API_KEY', 'change-me')
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
+TOKEN_MAX_AGE_SECONDS = int(os.environ.get('TOKEN_MAX_AGE_SECONDS', 2592000))
 TELEGRAM_INIT_DATA_MAX_AGE = int(os.environ.get('TELEGRAM_INIT_DATA_MAX_AGE', 86400))
+TELEGRAM_INIT_DATA_CLOCK_SKEW_SECONDS = int(
+    os.environ.get('TELEGRAM_INIT_DATA_CLOCK_SKEW_SECONDS', 60)
+)
 TELEGRAM_ADMIN_IDS = {
     int(value.strip())
     for value in os.environ.get(
@@ -164,3 +199,28 @@ TELEGRAM_ADMIN_IDS = {
     ).split(',')
     if value.strip().isdigit()
 }
+
+if APP_ENV == 'production':
+    if DEBUG:
+        raise RuntimeError('DEBUG must be false in production.')
+    if SECRET_KEY == 'dev-secret-key':
+        raise RuntimeError('SECRET_KEY must be configured in production.')
+    if BOT_API_KEY in {'', 'change-me'}:
+        raise RuntimeError('BOT_API_KEY must be configured in production.')
+    if not BOT_TOKEN:
+        raise RuntimeError('BOT_TOKEN must be configured in production.')
+    if not ALLOWED_HOSTS or '*' in ALLOWED_HOSTS:
+        raise RuntimeError('ALLOWED_HOSTS must be restricted in production.')
+    if not REDIS_URL:
+        raise RuntimeError('REDIS_URL must be configured in production.')
+
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = 'same-origin'
+    X_FRAME_OPTIONS = 'DENY'
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_SECURE = True
