@@ -21,6 +21,7 @@
 
 ```env
 # --- Django backend ---
+APP_ENV=development
 SECRET_KEY=local-dev-secret
 DEBUG=true
 ALLOWED_HOSTS=*
@@ -29,13 +30,13 @@ ALLOWED_HOSTS=*
 POSTGRES_DB=geomap
 POSTGRES_USER=geomap
 POSTGRES_PASS=geomap
-POSTGRES_HOST=geomap_db
+POSTGRES_HOST=geomap-db
 POSTGRES_PORT=5432
 
 # --- MinIO (свой, поднимается тем же docker-compose) ---
 MINIO_ROOT_USER=geomap_admin
 MINIO_ROOT_PASSWORD=придумайте_надёжный_пароль
-MINIO_ENDPOINT=geomap_minio:9000
+MINIO_ENDPOINT=geomap-minio:9000
 MINIO_EXTERNAL_ENDPOINT=localhost:9010
 MINIO_HTTPS=false
 MINIO_EXTERNAL_HTTPS=false
@@ -49,7 +50,7 @@ BOT_API_KEY=local-dev-key
 # --- Бот ---
 BOT_TOKEN=<токен от BotFather>
 # внутри docker-сети бот стучится к backend по имени сервиса, не localhost
-BACKEND_URL=http://geomap_backend:8010
+BACKEND_URL=http://geomap-backend:8010
 WEBAPP_URL=https://example.com
 ADMIN_ID=0
 ```
@@ -66,7 +67,7 @@ ADMIN_ID=0
 ## 2. Поднять базу и свой MinIO
 
 ```bash
-docker compose up -d geomap_db geomap_minio
+docker compose up -d geomap-db geomap-minio geomap-redis
 ```
 
 Подождите ~10 секунд, пока пройдут healthcheck'и:
@@ -82,7 +83,7 @@ docker compose ps
 ## 3. Собрать и поднять backend
 
 ```bash
-docker compose up -d --build geomap_backend
+docker compose up -d --build geomap-backend
 ```
 
 При старте контейнер сам выполнит `migrate`, а `django-minio-backend`
@@ -90,7 +91,7 @@ docker compose up -d --build geomap_backend
 бакет `geomap-media` в вашем MinIO. Проверьте логи:
 
 ```bash
-docker compose logs -f geomap_backend
+docker compose logs -f geomap-backend
 ```
 
 Должно быть видно `Starting gunicorn` без ошибок подключения к БД/MinIO.
@@ -117,7 +118,7 @@ curl http://localhost:8010/api/points/
    `MINIO_STORAGE_ACCESS_KEY` / `MINIO_STORAGE_SECRET_KEY` и пересоберите backend:
 
 ```bash
-docker compose up -d --build geomap_backend
+docker compose up -d --build geomap-backend
 ```
 
 ---
@@ -133,28 +134,27 @@ docker exec -it geomap_backend python manage.py createsuperuser
 
 ---
 
-## 6. Проверить `map.html`
+## 6. Проверить WebApp
 
-Убедитесь, что в `backend/static/map.html` `API_URL` указывает на **свой**
-backend, а не на тайлсервер (частая ошибка):
+Основная карта находится в React-приложении `webapp/`. В Docker она доступна
+по адресу **http://localhost:8080/geomap/**. Для standalone-разработки:
 
-```js
-const API_URL = "/api/points/";   // относительный путь — работает и с localhost, и с ngrok
+```bash
+cd webapp
+npm ci
+npm run dev
 ```
 
-Тайлы (`TILE_URL`) — внешний публичный сервер, трогать не нужно, он не
-зависит ни от localhost, ни от ngrok.
-
-Проверка прямо в браузере (без Telegram):
-**http://localhost:8010/static/map.html**
+Проверьте `VITE_MAP_STYLE_URL`: JSON style должен быть доступен из браузера и
+разрешать CORS. Точки загружаются через `/api/points/` и `/ws/points/`.
 
 ---
 
 ## 7. Поднять бота
 
 ```bash
-docker compose up -d --build geomap_bot
-docker compose logs -f geomap_bot
+docker compose up -d --build geomap-bot
+docker compose logs -f geomap-bot
 ```
 
 Должно появиться `🚀 GeoMapBot запущен`.
@@ -167,25 +167,25 @@ Telegram открывает WebApp только по `https`, поэтому н�
 вашего `localhost:8010`.
 
 ```bash
-ngrok http 8010
+ngrok http 8080
 ```
 
 В выводе будет строка вида:
 
 ```
-Forwarding  https://a1b2c3d4.ngrok-free.app -> http://localhost:8010
+Forwarding  https://a1b2c3d4.ngrok-free.app -> http://localhost:8080
 ```
 
 Скопируйте `https://a1b2c3d4.ngrok-free.app` в `.env`:
 
 ```env
-WEBAPP_URL=https://a1b2c3d4.ngrok-free.app/static/map.html
+WEBAPP_URL=https://a1b2c3d4.ngrok-free.app/geomap/
 ```
 
 Пересоберите бота, чтобы новый `WEBAPP_URL` подхватился:
 
 ```bash
-docker compose up -d --build geomap_bot
+   docker compose up -d --build geomap-bot
 ```
 
 **Важно:** ngrok-адрес меняется при каждом перезапуске (на бесплатном
@@ -211,7 +211,7 @@ docker compose up -d --build geomap_bot
    ```
 3. Пересоберите backend:
    ```bash
-   docker compose up -d --build geomap_backend
+   docker compose up -d --build geomap-backend
    ```
 
 Если фото сейчас не критично для теста — проще пропустить этот раздел и
@@ -224,12 +224,24 @@ docker compose up -d --build geomap_bot
 ## 9. Проверка в Telegram
 
 1. Найдите своего бота в Telegram, нажмите **/start**
-2. **➕ Добавить точку** → введите название → отправьте геолокацию (📎 → Геопозиция) →
-   отправьте фото или напишите «Пропустить»
+2. **➕ Добавить точку** → выберите тип → введите название → введите описание или
+   нажмите «Пропустить» → отправьте геолокацию (📎 → Геопозиция) → отправьте фото
 3. Проверьте, что точка появилась:
    - в админке: http://localhost:8010/admin/points/point/
    - через API: `curl http://localhost:8010/api/points/`
-4. **🗺 Карта** (если настроен ngrok) — должна открыться карта с меткой
+4. Пользователь с ролью `admin` или `superuser` увидит кнопку **⚙️ Админка**.
+   В ней доступны пользователи, типы точек, точки и голоса; ссылка на Django
+   Admin для этого сценария не используется.
+5. **🗺 Карта** (если настроен ngrok) — должна открыться карта с меткой
+
+Уведомления отправляются фоновым процессом бота. После применения миграций
+перезапустите backend и bot, чтобы он начал забирать очередь уведомлений:
+уведомление о доступе к точке получают все зарегистрированные пользователи,
+кроме `new_member`.
+
+```bash
+docker compose up -d --build geomap-backend geomap-bot
+```
 
 ---
 
@@ -237,12 +249,12 @@ docker compose up -d --build geomap_bot
 
 | Симптом | Причина / решение |
 |---|---|
-| Бот не отвечает | Проверьте `BOT_TOKEN`, посмотрите `docker compose logs geomap_bot` |
-| `❌ Не удалось добавить точку` | Проверьте `docker compose logs geomap_backend`. Т.к. `.env` теперь один и общий, несовпадения `BOT_API_KEY` быть не должно — но после изменения `.env` нужен рестарт обоих: `docker compose up -d --build geomap_backend geomap_bot` |
-| Бот не может достучаться до backend | `BACKEND_URL` в `.env` должен быть `http://geomap_backend:8010` (имя docker-сервиса), а не `http://localhost:8010` — изнутри контейнера `localhost` указывает на сам контейнер бота, а не на backend |
-| На карте нет точек, хотя в API они есть | Проверьте `API_URL` в `backend/static/map.html` — должно быть `/api/points/`, а не адрес тайлсервера |
+| Бот не отвечает | Проверьте `BOT_TOKEN`, посмотрите `docker compose logs geomap-bot` |
+| `❌ Не удалось добавить точку` | Проверьте `docker compose logs geomap-backend`. Т.к. `.env` теперь один и общий, несовпадения `BOT_API_KEY` быть не должно — но после изменения `.env` нужен рестарт обоих: `docker compose up -d --build geomap-backend geomap-bot` |
+| Бот не может достучаться до backend | `BACKEND_URL` в `.env` должен быть `http://geomap-backend:8010` (имя docker-сервиса), а не `http://localhost:8010` — изнутри контейнера `localhost` указывает на сам контейнер бота, а не на backend |
+| На карте нет точек, хотя в API они есть | Проверьте `/api/points/`, состояние WebSocket и `VITE_API_URL`; при недоступном WebSocket должен работать HTTP fallback |
 | Кнопка «Карта» не открывается / белый экран | `WEBAPP_URL` не https, ngrok-туннель уже не активен, либо не пересобирали бота после смены `WEBAPP_URL` |
-| На карте нет тайлов (пустой фон) | Тайлы грузятся с внешнего `https://api1.krasrm.com/maps/`, локальная сеть тут ни при чём. Если и там не подгружаются — проверьте актуальный `TILE_STYLE` в `map.html` |
+| На карте нет тайлов (пустой фон) | Проверьте доступность `VITE_MAP_STYLE_URL` из браузера Telegram и CORS для style/sprite/glyphs |
 | Фото не открывается по `photo_url` | `MINIO_EXTERNAL_ENDPOINT` должен быть доступен из браузера, который открывает карту. `localhost:9010` подходит только если сами открываете карту с этой же машины; при доступе через ngrok нужен отдельный туннель для MinIO (см. раздел «Фото и ngrok») |
 | Backend падает с ошибкой "bucket does not exist" | Проверьте, что в `settings.py` стоит `MINIO_CONSISTENCY_CHECK_ON_START: True`, и что `geomap_minio` был healthy до старта `geomap_backend` |
 | После смены `.env` ничего не поменялось | `env_file` подхватывается только при пересоздании контейнера — `docker compose restart` не перечитывает `.env`, нужен `docker compose up -d --build <сервис>` |
