@@ -1,5 +1,16 @@
+from datetime import timedelta
+
+from django.conf import settings
+from django.utils import timezone
 from rest_framework.authentication import TokenAuthentication, get_authorization_header
 from rest_framework.exceptions import AuthenticationFailed
+
+
+def token_is_valid(token):
+    if not token.created:
+        return True
+    max_age = timedelta(seconds=settings.TOKEN_MAX_AGE_SECONDS)
+    return timezone.now() - token.created <= max_age
 
 
 class TokenAuthenticationWithoutApiKey(TokenAuthentication):
@@ -13,3 +24,10 @@ class TokenAuthenticationWithoutApiKey(TokenAuthentication):
             return super().authenticate(request)
         except AuthenticationFailed:
             raise
+
+    def authenticate_credentials(self, key):
+        user, token = super().authenticate_credentials(key)
+        if not token_is_valid(token):
+            token.delete()
+            raise AuthenticationFailed('Token has expired.')
+        return user, token

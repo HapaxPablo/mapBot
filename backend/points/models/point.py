@@ -1,7 +1,9 @@
 import uuid
 from datetime import timedelta as td
 
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import Q
 from django_minio_backend import MinioBackend
 
 
@@ -22,8 +24,14 @@ class Point(models.Model):
         related_name='points', verbose_name='Тип точки',
     )
     description = models.TextField(blank=True, null=True, verbose_name='Описание')
-    lat = models.FloatField(verbose_name='Широта')
-    lng = models.FloatField(verbose_name='Долгота')
+    lat = models.FloatField(
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+        verbose_name='Широта',
+    )
+    lng = models.FloatField(
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        verbose_name='Долгота',
+    )
     photo = models.FileField(
         upload_to=photo_path,
         storage=MinioBackend(bucket_name='geomap-media'),
@@ -49,6 +57,17 @@ class Point(models.Model):
         indexes = [
             models.Index(fields=['is_active']),
             models.Index(fields=['telegram_user_id']),
+            models.Index(fields=['lat', 'lng'], name='point_lat_lng_idx'),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(lat__gte=-90, lat__lte=90),
+                name='point_latitude_range',
+            ),
+            models.CheckConstraint(
+                condition=Q(lng__gte=-180, lng__lte=180),
+                name='point_longitude_range',
+            ),
         ]
 
     def __str__(self):

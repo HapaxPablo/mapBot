@@ -9,6 +9,7 @@ from django.db import transaction
 from rest_framework.authtoken.models import Token
 
 from users.models import TelegramProfile
+from users.notifications import notify_admins
 
 
 def telegram_webapp_user(init_data: str) -> dict:
@@ -30,8 +31,16 @@ def telegram_webapp_user(init_data: str) -> dict:
     if not hmac.compare_digest(calculated_hash, received_hash):
         raise ValueError('Invalid Telegram WebApp init data.')
 
-    auth_date = int(values.get('auth_date', '0'))
-    if auth_date <= 0 or time.time() - auth_date > settings.TELEGRAM_INIT_DATA_MAX_AGE:
+    try:
+        auth_date = int(values.get('auth_date', '0'))
+    except (TypeError, ValueError) as exc:
+        raise ValueError('Telegram WebApp auth date is invalid.') from exc
+    now = time.time()
+    if (
+        auth_date <= 0
+        or now - auth_date > settings.TELEGRAM_INIT_DATA_MAX_AGE
+        or auth_date - now > settings.TELEGRAM_INIT_DATA_CLOCK_SKEW_SECONDS
+    ):
         raise ValueError('Telegram WebApp init data has expired.')
 
     import json
@@ -47,7 +56,7 @@ def telegram_webapp_user(init_data: str) -> dict:
 @transaction.atomic
 def authenticate_telegram_user(*, telegram_id: int, username: str = '',
                                first_name: str = '', last_name: str = '',
-                               phone_number: str = ''):
+                               rotate_token: bool = False):
     profile = TelegramProfile.objects.select_for_update().filter(telegram_id=telegram_id).first()
     if profile is None:
         user = User.objects.create_user(
@@ -60,18 +69,23 @@ def authenticate_telegram_user(*, telegram_id: int, username: str = '',
         profile = TelegramProfile.objects.create(
             user=user, telegram_id=telegram_id, username=username[:255],
             first_name=first_name[:255], last_name=last_name[:255],
-            phone_number=phone_number[:32],
             role=(TelegramProfile.Role.ADMIN
                   if telegram_id in settings.TELEGRAM_ADMIN_IDS
                   else TelegramProfile.Role.NEW_MEMBER),
+        )
+        notify_admins(
+            f"👤 Зарегистрировался пользователь: {username or telegram_id} "
+            f"(роль: {profile.get_role_display()})."
         )
     else:
         user = profile.user
         profile.username = username[:255]
         profile.first_name = first_name[:255]
         profile.last_name = last_name[:255]
-        profile.phone_number = phone_number[:32]
-        profile.save(update_fields=('username', 'first_name', 'last_name', 'phone_number', 'updated_at'))
+        update_fields = ['username', 'first_name', 'last_name', 'updated_at']
+        profile.save(update_fields=update_fields)
 
+    if rotate_token:
+        Token.objects.filter(user=user).delete()
     token, _ = Token.objects.get_or_create(user=user)
     return profile, token

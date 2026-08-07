@@ -30,3 +30,17 @@ class TelegramProfile(models.Model):
 
     def __str__(self):
         return f'{self.username or self.telegram_id} ({self.get_role_display()})'
+
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(
+        TelegramProfile, on_delete=models.CASCADE, related_name='notifications',
+    )
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('created_at',)
+
+    def __str__(self):
+        return f'{self.recipient.telegram_id}: {self.message[:50]}'
