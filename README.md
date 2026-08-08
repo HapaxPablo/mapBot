@@ -1,152 +1,226 @@
-# GeoMapBot 2.0 — структура
+# GeoMapBot 2.0
 
+Telegram-бот и Telegram WebApp для добавления геоточек, просмотра их на карте и голосования. Проект состоит из Django API, aiogram-бота и React-приложения на MapLibre.
+
+## Структура проекта
+
+```text
+.
+├── backend/              # Django API, WebSocket, пользователи и точки
+├── bot/                  # Telegram-бот на aiogram 3 и FSM
+├── webapp/               # React + MapLibre Telegram WebApp
+├── nginx/                # reverse proxy для WebApp, API, WebSocket и фото
+├── docker-compose.yml    # локальный стек
+└── README.md             # общая и локальная документация
 ```
-geomap/
-├── docker-compose.yml        # geomap-db + geomap-backend + geomap-bot
-├── backend/                  # Django-сервис (по образцу rmc_rest_api)
-│   ├── geomap_api/settings.py, urls.py, wsgi.py
-│   ├── points/                # модель Point (title, lat, lng, photo в MinIO, likes/dislikes)
-│   │   ├── models.py serializers.py permissions.py views.py urls.py admin.py
-│   │   └── migrations/0001_initial.py   ← уже сгенерирована и проверена
-│   ├── static/map.html        # legacy-страница карты, не используется основным WebApp
-│   ├── api_helpers.py         # presigned-ссылки MinIO (как File.url в rmc_rest_api)
-│   ├── requirements.txt / Dockerfile / .env.example
-├── webapp/                    # React + MapLibre Telegram WebApp
-│   ├── src/GeoMapWidget.tsx, src/map/
-│   └── package.json / Dockerfile
-└── bot/                       # aiogram 3, FSM
-    ├── bot.py config.py api_client.py
-    └── requirements.txt / Dockerfile / .env.example
-```
+
+Основные сервисы Docker Compose:
+
+| Сервис | Назначение | Локальный адрес |
+|---|---|---|
+| `geomap-nginx` | единая точка входа | `http://localhost:8080` |
+| `geomap-webapp` | собранная карта | `http://localhost:8080/geomap/` |
+| `geomap-backend` | Django API и WebSocket | `http://localhost:8010` |
+| `geomap-db` | PostgreSQL | только Docker-сеть |
+| `geomap-redis` | Redis для Channels и фоновых задач | только Docker-сеть |
+| `geomap-minio` | хранилище фотографий | `http://localhost:9010`, консоль `http://localhost:9011` |
+| `geomap-bot` | Telegram-бот | — |
 
 ## Как это работает
 
-1. **Бэкенд** — отдельный Django-проект (не залезает в модели `brands` из
-   основного rmc_rest_api, чтобы не путать «бренды» рекламодателей с точками
-   на карте). Модель `Point`: `title`, `lat`, `lng`, `photo` (MinIO,
-   presigned-ссылка на 7 дней — как у `File.url`), `likes`/`dislikes`,
-   `telegram_user_id`, мягкое удаление через `is_active`.
-2. **Запись** (создание точки, лайк/дизлайк, фото) защищена заголовком
-   `Authorization: Api-Key <BOT_API_KEY>` — это делает только бот.
-   **Чтение** (`GET /api/points/`) открыто всем — карта в WebApp дёргает его
-   напрямую из браузера Telegram без авторизации.
-3. **Бот** (aiogram 3, FSM): кнопка «➕ Добавить точку» → тип → название →
-   описание (опционально) → геолокация → фото. Кнопка «🗺 Карта» — это `WebAppInfo`, открывающая
-   WebApp из `WEBAPP_URL` прямо внутри Telegram.
-4. **Карта** — React + MapLibre. Точки загружаются по viewport через WebSocket
-   и HTTP fallback, подложка задаётся `VITE_MAP_STYLE_URL`.
+1. Бот собирает данные для точки: тип, название, описание, геолокацию и фотографию.
+2. Backend хранит точки в PostgreSQL, фотографии — в приватном бакете MinIO, а для фото выдаёт временные presigned-ссылки.
+3. Чтение точек (`GET /api/points/`) открыто для карты. Запись, голосование и загрузка фото защищены `Authorization: Api-Key <BOT_API_KEY>` или Telegram WebApp-аутентификацией.
+4. WebApp получает точки по WebSocket `/ws/points/` и использует HTTP fallback через `/api/points/`.
+5. Nginx маршрутизирует `/geomap/` в WebApp, `/api/`, `/admin/`, `/static/` и `/ws/` в backend, а `/geomap-media/` — в MinIO.
 
-Админские возможности доступны в боте пользователям с ролями `admin` и
-`superuser`: просмотр и смена ролей пользователей, управление типами точек,
-редактирование и скрытие точек, просмотр голосов. Django Admin для этих
-операций пользователю не показывается.
+Пользователи с ролью `admin` или `superuser` получают в боте раздел администрирования: пользователи, типы точек, точки, голоса и уведомления. Django Admin для основного пользовательского сценария не используется.
 
-Уведомления также отправляются через бота: `admin` и `superuser` получают
-сообщения о регистрации пользователей и создании/изменении точек, а
-все пользователи, кроме `new_member`, — о предоставлении доступа к конкретной точке.
+## Локальный запуск через Docker
 
-## Что нужно проверить/поправить перед деплоем
+### Что понадобится
 
-- Для production задайте `APP_ENV=production`, отключите `DEBUG`, укажите
-  конкретные `ALLOWED_HOSTS` и `CORS_ALLOWED_ORIGINS`. При production-настройках
-  backend завершится с ошибкой, если оставить тестовые секреты.
+- Docker с Docker Compose;
+- токен Telegram-бота от [@BotFather](https://t.me/BotFather);
+- HTTPS-туннель, например [ngrok](https://ngrok.com/download), если нужно открывать WebApp из Telegram.
 
-- **Стиль карты**. Укажите доступный JSON style URL в `VITE_MAP_STYLE_URL`.
-  Он должен быть доступен из браузера Telegram и разрешать CORS.
-- **Имя docker-сети** в `docker-compose.yml` (`rmc_rest_api_default`) — нужно
-  подставить реальное имя сети из `docker compose ls`/`docker network ls` у
-  основного проекта, чтобы `geomap-backend` мог достучаться до MinIO
-  (`files:9000`) и, если нужно, до `gateway`.
-- **MinIO**: бэкенд переиспользует тот же инстанс, что и rmc_rest_api
-  (бакет `geomap-media` создастся сам при первой загрузке фото — либо
-  добавьте создание бакета так же, как `files/minio_setup.py` в основном
-  проекте).
-- **Домен/nginx**: WebApp публикуется через `location /geomap/`, backend —
-  через `/api/`, WebSocket — через `/ws/`. `WEBAPP_URL` должен указывать на
-  `/geomap/`.
-- Миграция `points/migrations/0001_initial.py` сгенерирована и синтаксически
-  проверена (`makemigrations` + `py_compile`), но не прогонялась на реальной
-  БД/MinIO — сделайте это перед первым релизом.
+### 1. Создать `.env`
 
-## Запуск локально (без Docker)
+Создайте файл `.env` в корне проекта рядом с `docker-compose.yml`. Backend, бот, MinIO и WebApp используют этот общий файл.
+
+```env
+# Django
+APP_ENV=development
+SECRET_KEY=local-dev-secret
+DEBUG=true
+ALLOWED_HOSTS=*
+# Для ngrok укажите актуальный домен, например:
+# CSRF_TRUSTED_ORIGINS=https://example.ngrok-free.app
+
+# PostgreSQL
+POSTGRES_DB=geomap
+POSTGRES_USER=geomap
+POSTGRES_PASS=geomap
+POSTGRES_HOST=geomap-db
+POSTGRES_PORT=5432
+
+# MinIO
+MINIO_ROOT_USER=geomap_admin
+MINIO_ROOT_PASSWORD=придумайте_надёжный_пароль
+MINIO_ENDPOINT=geomap-minio:9000
+MINIO_EXTERNAL_ENDPOINT=localhost:9010
+MINIO_HTTPS=false
+MINIO_EXTERNAL_HTTPS=false
+MINIO_REGION=us-east-1
+MINIO_STORAGE_ACCESS_KEY=geomap_admin
+MINIO_STORAGE_SECRET_KEY=придумайте_надёжный_пароль
+
+# Бот ↔ backend
+BOT_API_KEY=local-dev-key
+BOT_TOKEN=<токен от BotFather>
+BACKEND_URL=http://geomap-backend:8010
+WEBAPP_URL=https://example.com/geomap/
+ADMIN_ID=0
+
+# WebApp. Пустой VITE_API_URL означает текущий origin.
+# Для локального запуска через nginx можно оставить пустым.
+VITE_API_URL=
+VITE_MAP_STYLE_URL=https://example.com/maps/styles/basic/style.json
+```
+
+`MINIO_ROOT_PASSWORD` и `MINIO_STORAGE_SECRET_KEY` должны совпадать для простого локального запуска. Позже можно создать отдельный access key в консоли MinIO (`http://localhost:9011`) и заменить только `MINIO_STORAGE_ACCESS_KEY` / `MINIO_STORAGE_SECRET_KEY`.
+
+`VITE_MAP_STYLE_URL` должен быть доступен из браузера Telegram и разрешать CORS для style, sprite и glyphs.
+
+### 2. Запустить инфраструктуру
 
 ```bash
-cd backend
-cp .env.example .env   # заполнить MinIO/Postgres
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver 0.0.0.0:8010
-
-cd ../bot
-cp .env.example .env   # заполнить BOT_TOKEN и BOT_API_KEY (тот же, что в backend/.env)
-pip install -r requirements.txt
-python bot.py
+docker compose up -d geomap-db geomap-minio geomap-redis
+docker compose ps
 ```
 
-## Принятые соглашения
+Перед следующим шагом `geomap-db`, `geomap-minio` и `geomap-redis` должны перейти в состояние `healthy`.
+
+### 3. Запустить backend, WebApp и nginx
+
+```bash
+docker compose up -d --build geomap-backend geomap-webapp nginx
+docker compose logs -f geomap-backend
 ```
-  <тип>[(необязательный контекст)]: <описание>
 
-  [необязательное тело]
+Контейнер backend выполняет миграции и сбор статики при старте. Проверка API:
 
-  [необязательная(ые) сноска(и)]
+```bash
+curl http://localhost:8010/api/health/
+curl http://localhost:8010/api/points/
+```
 
-  <тип>: обязательно должен быть одним из перечисленных
-        feat      ✨ Добавление нового функционала
-                     (MINOR в Cемантическом Версионировании)
-        fix       🐛 Исправление ошибок
-                     (PATCH в Cемантическом Версионировании)
-        docs      📚 Только обновление документации
-        style     💎 Правки по кодстайлу
-                     (табы, отступы, точки, запятые и т.д.)
-        refactor  📦 Правки кода без исправления ошибок или
-                     добавления новых функций
-        perf      🚀 Изменения направленные на улучшение
-                     производительности
-        test      🚨 Добавление или исправление существующих
-                     тестов
-        build     🛠️ Сборка проекта или изменения внешних
-                     зависимостей
-        ci        ⚙️ Настройка CI и работа со скриптами
-        chore     ♻️ Другие изменения не модифицирующие
-                     исходный код или тесты
-        revert    🗑️ Откат на предыдущие коммиты
-        wip       🐒 Работа в процессе
-                     (промежуточный коммит)
+Карта через nginx доступна по адресу `http://localhost:8080/geomap/`. В standalone-режиме WebApp можно запустить отдельно:
 
-  <описание>: должно формулироваться, как продолжение фразы:
-              "В случае применения этого коммита будет...",
-              начинаться с маленькой буквы, быть не длиннее 72 символов
-              и не заканчиваться точкой '.'
+```bash
+cd webapp
+npm ci
+npm run dev
+```
 
-  [необязательное тело]: должно описывать смысл изменения.
-                         Не "что было поменяно" (это видно в диффе),
-                         не где было поменяно (это тоже было в диффе),
-                         а ПОЧЕМУ.
+### 4. Создать суперпользователя
 
-  [(необязательный контекст)]: может содержать номер тикета из Projeqtor
-                               или быть кратким (одно, два слова)
-                               описанием доменной области, которую
-                               затрагивает коммит
+```bash
+docker exec -it geomap_backend python manage.py createsuperuser
+```
 
-  BREAKING CHANGE: коммит, который имеет сноску BREAKING CHANGE или
-  коммит, заканчивающийся восклицательным знаком (!) после типа или
-  контекста, вводящий изменение(я), нарушающие обратную совместимость
-  (соответствует MAJOR в Cемантическом Версионировании).
-  BREAKING CHANGE может быть частью коммита любого типа.
-  ```
-  Подробнее смотреть: https://habr.com/ru/articles/867012/
+Локальная Django Admin: `http://localhost:8010/admin/`.
 
-  пример написания сообщения коммита:
+### 5. Запустить бота
 
-  ```
-  fix: убрано логирование включенное для отладки
+```bash
+docker compose up -d --build geomap-bot
+docker compose logs -f geomap-bot
+```
 
-  ...
+После изменения `.env` пересоздавайте затронутые контейнеры через `docker compose up -d --build <сервис>`. Команда `docker compose restart` не перечитывает значения из `env_file`.
 
-  feat(12345): добавлена возможность выбора роли пользователя
+## Проверка в Telegram
 
-  ...
+Без HTTPS Telegram не откроет WebApp. Для локального тестирования:
 
-  refactor(auth): добавлен сервис для авторизации пользователей
-  ```
+```bash
+ngrok http 8080
+```
+
+Скопируйте выданный адрес в `.env`:
+
+```env
+WEBAPP_URL=https://a1b2c3d4.ngrok-free.app/geomap/
+CSRF_TRUSTED_ORIGINS=https://a1b2c3d4.ngrok-free.app
+VITE_API_URL=
+```
+
+После этого пересоберите бота и WebApp, чтобы новые переменные попали в контейнеры:
+
+```bash
+docker compose up -d --build geomap-bot geomap-webapp nginx
+```
+
+Бесплатный адрес ngrok меняется после перезапуска туннеля — при каждой смене обновляйте `WEBAPP_URL` и пересобирайте бота.
+
+Откройте бота и выполните:
+
+1. `/start`;
+2. **Добавить точку** → тип → название → описание или «Пропустить» → геолокация → фотография;
+3. откройте **Карту**.
+
+### Фотографии через ngrok
+
+При `MINIO_EXTERNAL_ENDPOINT=localhost:9010` фотографии доступны только браузеру на этой же машине. Чтобы Telegram тоже мог их загрузить, поднимите второй туннель:
+
+```bash
+ngrok http 9010
+```
+
+Затем обновите `.env` и пересоберите backend:
+
+```env
+MINIO_EXTERNAL_ENDPOINT=xxxx.ngrok-free.app
+MINIO_EXTERNAL_HTTPS=true
+```
+
+```bash
+docker compose up -d --build geomap-backend
+```
+
+На бесплатном тарифе ngrok может потребоваться конфигурация нескольких туннелей или платный тариф.
+
+## Частые проблемы
+
+| Симптом | Что проверить |
+|---|---|
+| Бот не отвечает | `BOT_TOKEN` и `docker compose logs geomap-bot` |
+| Не удаётся добавить точку | одинаковый `BOT_API_KEY` у бота и backend; после изменения `.env` пересоздайте оба сервиса |
+| Бот не видит backend | внутри Docker `BACKEND_URL` должен быть `http://geomap-backend:8010`, не `localhost` |
+| Карта пустая | `/api/points/`, WebSocket `/ws/points/`, `VITE_API_URL` и доступность `VITE_MAP_STYLE_URL` с CORS |
+| Кнопка «Карта» не открывается | `WEBAPP_URL` должен быть HTTPS, содержать `/geomap/`, а бот нужно пересобрать после его изменения |
+| Фото не открывается | `MINIO_EXTERNAL_ENDPOINT` должен быть доступен браузеру Telegram; для ngrok нужен отдельный туннель MinIO |
+| Ошибка `bucket does not exist` | MinIO должен быть `healthy` до старта backend; при необходимости пересоздайте backend после запуска MinIO |
+| Изменения `.env` не применились | используйте `docker compose up -d --build <сервис>`, а не только `docker compose restart` |
+
+## Production перед деплоем
+
+- установить `APP_ENV=production` и `DEBUG=false`;
+- задать непредсказуемые `SECRET_KEY` и `BOT_API_KEY`;
+- ограничить `ALLOWED_HOSTS` конкретными доменами;
+- настроить `CSRF_TRUSTED_ORIGINS` и HTTPS;
+- задать production-значения `VITE_MAP_STYLE_URL`, `VITE_API_URL`, `WEBAPP_URL` и внешнего MinIO;
+- убедиться, что Redis, PostgreSQL и MinIO доступны backend;
+- проверить миграции на копии production-базы.
+
+## Соглашения по коммитам
+
+Формат сообщения:
+
+```text
+<тип>[(контекст)]: <краткое описание>
+```
+
+Основные типы: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`, `wip`. Описание начинается со строчной буквы, формулируется как продолжение фразы «после применения этого коммита будет…», не длиннее 72 символов и без точки в конце. Несовместимые изменения помечаются `!` после типа/контекста или отдельной строкой `BREAKING CHANGE:`.
+
