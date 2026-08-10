@@ -68,10 +68,24 @@ ASGI_APPLICATION = 'geomap_api.asgi.application'
 
 REDIS_URL = os.environ.get('REDIS_URL', '').strip()
 if REDIS_URL:
+    # RedisChannelLayer uses a blocking BZPOPMIN read while a WebSocket waits
+    # for a group event. A finite socket read timeout turns an idle socket into
+    # a disconnect, so keep the read timeout unlimited and limit only connect.
+    redis_host = {
+        'address': REDIS_URL,
+        'socket_connect_timeout': 5,
+        'socket_timeout': None,
+        'health_check_interval': 30,
+    }
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {'hosts': [REDIS_URL]},
+            'CONFIG': {
+                'hosts': [redis_host],
+                'prefix': 'geomap',
+                'expiry': 60,
+                'group_expiry': 86400,
+            },
         },
     }
 else:
