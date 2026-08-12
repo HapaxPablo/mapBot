@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 import asyncio
 
 from aiogram.types import MenuButtonWebApp, WebAppInfo
@@ -13,6 +15,7 @@ _dispatcher_configured = False
 
 
 def configure_dispatcher() -> None:
+    """Выполняет операцию компонента Telegram-бота."""
     global _dispatcher_configured
     if _dispatcher_configured:
         return
@@ -24,6 +27,7 @@ def configure_dispatcher() -> None:
 
 
 async def main():
+    """Выполняет операцию компонента Telegram-бота."""
     configure_dispatcher()
     logger.info("🚀 GeoMapBot запущен")
     await bot.set_chat_menu_button(

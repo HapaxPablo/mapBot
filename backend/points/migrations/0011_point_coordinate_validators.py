@@ -1,9 +1,12 @@
+"""Миграция схемы данных серверной части GeoMap."""
+
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import migrations, models
 from django.db.models import Q
 
 
 class Migration(migrations.Migration):
+    """Описывает операции миграции базы данных."""
     dependencies = [
         ('points', '0010_seed_general_point_type'),
     ]

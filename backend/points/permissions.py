@@ -1,18 +1,16 @@
+"""Компонент серверной части GeoMap."""
+
 from django.conf import settings
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 from users.models import TelegramProfile
 
 class BotOrReadOnly(BasePermission):
-    """
-    GET/HEAD/OPTIONS доступны всем (карта в WebApp читает точки без авторизации).
-    Запись (создание точки, лайк/дизлайк, загрузка фото) — с валидным
-    заголовком Authorization: Api-Key <BOT_API_KEY>, который подставляет бот.
-    Голосование также доступно авторизованным пользователям WebApp.
-    """
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
 
     message = 'Требуется корректный Api-Key.'
 
     def has_permission(self, request, view):
+        """Выполняет операцию серверного компонента GeoMap."""
         if request.method in SAFE_METHODS:
             return True
 
@@ -28,18 +26,21 @@ class BotOrReadOnly(BasePermission):
 
 
 class CanVotePoint(BotOrReadOnly):
-    """Allow registered WebApp users to vote while keeping bot write access."""
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
 
     def has_permission(self, request, view):
+        """Выполняет операцию серверного компонента GeoMap."""
         if request.user.is_authenticated:
             return True
         return super().has_permission(request, view)
 
 
 class CanDeactivatePoint(BasePermission):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     message = 'Недостаточно прав для деактивации точки.'
 
     def has_permission(self, request, view):
+        """Выполняет операцию серверного компонента GeoMap."""
         auth = request.headers.get('Authorization', '')
         if auth == f'Api-Key {settings.BOT_API_KEY}':
             return True
@@ -55,6 +56,7 @@ class CanDeactivatePoint(BasePermission):
         }
 
     def has_object_permission(self, request, view, obj):
+        """Выполняет операцию серверного компонента GeoMap."""
         auth = request.headers.get('Authorization', '')
         if auth == f'Api-Key {settings.BOT_API_KEY}':
             return True

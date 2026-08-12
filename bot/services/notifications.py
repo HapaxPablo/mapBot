@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 import asyncio
 
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
@@ -7,6 +9,7 @@ from runtime import bot, logger
 
 
 async def notification_loop():
+    """Выполняет операцию компонента Telegram-бота."""
     while True:
         try:
             notifications = await api_client.get_pending_notifications()

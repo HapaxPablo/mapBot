@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -9,6 +11,7 @@ from runtime import POINTS_BACK_BUTTON, POINTS_COMMON_BUTTON, POINTS_PERSONAL_BU
 
 
 def point_type_keyboard(point_types: list[dict]) -> InlineKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(
             text=point_type["name"],
@@ -18,6 +21,7 @@ def point_type_keyboard(point_types: list[dict]) -> InlineKeyboardMarkup:
 
 
 def points_scope_keyboard() -> ReplyKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=POINTS_PERSONAL_BUTTON), KeyboardButton(text=POINTS_COMMON_BUTTON)],
@@ -28,6 +32,7 @@ def points_scope_keyboard() -> ReplyKeyboardMarkup:
 
 
 def point_vote_keyboard(point_id: str, likes: int, dislikes: int) -> InlineKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text=f"❤️ ({likes})", callback_data=f"vote:like:{point_id}"),
         InlineKeyboardButton(text=f"👎 ({dislikes})", callback_data=f"vote:dislike:{point_id}"),

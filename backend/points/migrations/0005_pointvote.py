@@ -1,8 +1,11 @@
+"""Миграция схемы данных серверной части GeoMap."""
+
 from django.db import migrations, models
 import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
+    """Описывает операции миграции базы данных."""
     dependencies = [
         ('auth', '0012_alter_user_first_name_max_length'),
         ('points', '0004_move_telegramprofile_to_users'),

@@ -1,3 +1,5 @@
+"""Компонент серверной части GeoMap."""
+
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
@@ -10,7 +12,9 @@ from users.models import TelegramProfile
 
 @override_settings(BOT_API_KEY='test-bot-key')
 class AdminPointTypeTests(TestCase):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     def setUp(self):
+        """Выполняет операцию серверного компонента GeoMap."""
         self.client = APIClient()
         user = User.objects.create_user(username='tg_100')
         TelegramProfile.objects.create(
@@ -20,6 +24,7 @@ class AdminPointTypeTests(TestCase):
         )
 
     def test_admin_can_create_point_type(self):
+        """Выполняет операцию серверного компонента GeoMap."""
         response = self.client.post(
             '/api/admin/point-types/?telegram_user_id=100',
             {
@@ -36,7 +41,9 @@ class AdminPointTypeTests(TestCase):
 
 
 class TelegramAuthRegressionTests(TestCase):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     def test_authentication_does_not_collect_phone_number(self):
+        """Выполняет операцию серверного компонента GeoMap."""
         authenticate_telegram_user(
             telegram_id=200,
             username='new_user',
@@ -48,7 +55,9 @@ class TelegramAuthRegressionTests(TestCase):
 
 
 class ViewportTests(TestCase):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     def setUp(self):
+        """Выполняет операцию серверного компонента GeoMap."""
         public_type = PointType.objects.create(name='public')
         Point.objects.create(
             title='Inside',
@@ -66,6 +75,7 @@ class ViewportTests(TestCase):
         )
 
     def test_bounds_parser_rejects_invalid_coordinates(self):
+        """Выполняет операцию серверного компонента GeoMap."""
         self.assertIsNone(parse_bounds('92,-90,93,91'))
         self.assertEqual(
             parse_bounds('92.8,55.9,92.9,56.1'),
@@ -73,6 +83,7 @@ class ViewportTests(TestCase):
         )
 
     def test_points_endpoint_filters_by_bbox(self):
+        """Выполняет операцию серверного компонента GeoMap."""
         response = self.client.get('/api/points/?bbox=92.8,55.9,92.9,56.1')
 
         self.assertEqual(response.status_code, 200)

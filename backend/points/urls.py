@@ -1,3 +1,5 @@
+"""Компонент серверной части GeoMap."""
+
 from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 

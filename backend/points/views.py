@@ -1,3 +1,5 @@
+"""Компонент серверной части GeoMap."""
+
 from django.conf import settings
 from django.db import IntegrityError, connection, transaction
 from django.db.models import F, Q
@@ -26,7 +28,7 @@ from users.models import Notification, TelegramProfile
 @authentication_classes([])
 @permission_classes([AllowAny])
 def telegram_auth(request):
-    """Register/login a Telegram user; only the trusted bot may call this."""
+    """Выполняет операцию серверного компонента GeoMap."""
     auth = request.headers.get('Authorization', '')
     if auth != f'Api-Key {settings.BOT_API_KEY}':
         return Response({'detail': 'Требуется корректный Api-Key.'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -43,7 +45,7 @@ def telegram_auth(request):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def telegram_webapp_auth(request):
-    """Authenticate the user who opened this Telegram WebApp."""
+    """Выполняет операцию серверного компонента GeoMap."""
     serializer = TelegramWebAppAuthSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     try:
@@ -65,6 +67,7 @@ def telegram_webapp_auth(request):
 @authentication_classes([TokenAuthenticationWithoutApiKey])
 @permission_classes([IsAuthenticated])
 def current_user(request):
+    """Выполняет операцию серверного компонента GeoMap."""
     profile = TelegramProfile.objects.get(user=request.user)
     return Response(TelegramUserSerializer(profile).data)
 
@@ -72,7 +75,7 @@ def current_user(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def point_types(request):
-    """Return the point types that can be selected when creating a point."""
+    """Выполняет операцию серверного компонента GeoMap."""
     return Response(PointTypeSerializer(PointType.objects.all(), many=True).data)
 
 
@@ -80,6 +83,7 @@ def point_types(request):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def health(request):
+    """Выполняет операцию серверного компонента GeoMap."""
     try:
         connection.ensure_connection()
     except Exception:
@@ -91,6 +95,7 @@ def health(request):
 
 
 def _require_bot_key(request):
+    """Выполняет операцию серверного компонента GeoMap."""
     if request.headers.get('Authorization', '') != f'Api-Key {settings.BOT_API_KEY}':
         return Response(
             {'detail': 'Требуется корректный Api-Key.'},
@@ -103,6 +108,7 @@ def _require_bot_key(request):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def bot_notifications(request):
+    """Выполняет операцию серверного компонента GeoMap."""
     error = _require_bot_key(request)
     if error:
         return error
@@ -118,6 +124,7 @@ def bot_notifications(request):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def bot_notifications_ack(request):
+    """Выполняет операцию серверного компонента GeoMap."""
     error = _require_bot_key(request)
     if error:
         return error
@@ -129,6 +136,7 @@ def bot_notifications_ack(request):
 
 
 def _admin_actor(request):
+    """Выполняет операцию серверного компонента GeoMap."""
     auth = request.headers.get('Authorization', '')
     if auth != f'Api-Key {settings.BOT_API_KEY}':
         return None, Response(
@@ -158,6 +166,7 @@ def _admin_actor(request):
 
 
 def _without_actor(data):
+    """Выполняет операцию серверного компонента GeoMap."""
     data = data.copy()
     data.pop('telegram_user_id', None)
     return data
@@ -167,7 +176,7 @@ def _without_actor(data):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def telegram_profile(request):
-    """Return a profile for the trusted bot, including the current role."""
+    """Выполняет операцию серверного компонента GeoMap."""
     auth = request.headers.get('Authorization', '')
     if auth != f'Api-Key {settings.BOT_API_KEY}':
         return Response(
@@ -195,6 +204,7 @@ def telegram_profile(request):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def admin_users(request):
+    """Выполняет операцию серверного компонента GeoMap."""
     _, error = _admin_actor(request)
     if error:
         return error
@@ -214,6 +224,7 @@ def admin_users(request):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def admin_user_role(request, telegram_id):
+    """Выполняет операцию серверного компонента GeoMap."""
     actor, error = _admin_actor(request)
     if error:
         return error
@@ -238,6 +249,7 @@ def admin_user_role(request, telegram_id):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def admin_point_types(request):
+    """Выполняет операцию серверного компонента GeoMap."""
     _, error = _admin_actor(request)
     if error:
         return error
@@ -254,6 +266,7 @@ def admin_point_types(request):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def admin_point_type_detail(request, pk):
+    """Выполняет операцию серверного компонента GeoMap."""
     _, error = _admin_actor(request)
     if error:
         return error
@@ -284,6 +297,7 @@ def admin_point_type_detail(request, pk):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def admin_points(request):
+    """Выполняет операцию серверного компонента GeoMap."""
     _, error = _admin_actor(request)
     if error:
         return error
@@ -309,6 +323,7 @@ def admin_points(request):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def admin_point_detail(request, pk):
+    """Выполняет операцию серверного компонента GeoMap."""
     _, error = _admin_actor(request)
     if error:
         return error
@@ -331,6 +346,7 @@ def admin_point_detail(request, pk):
 @permission_classes([AllowAny])
 @parser_classes([MultiPartParser])
 def admin_point_photo(request, pk):
+    """Выполняет операцию серверного компонента GeoMap."""
     _, error = _admin_actor(request)
     if error:
         return error
@@ -350,6 +366,7 @@ def admin_point_photo(request, pk):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def admin_votes(request):
+    """Выполняет операцию серверного компонента GeoMap."""
     _, error = _admin_actor(request)
     if error:
         return error
@@ -367,16 +384,7 @@ def admin_votes(request):
 
 
 class PointViewSet(viewsets.ModelViewSet):
-    """
-    Точки карты.
-
-    - GET  /api/points/            — список активных точек (для WebApp-карты)
-    - GET  /api/points/{id}/       — одна точка
-    - POST /api/points/            — создать точку (бот, Api-Key)
-    - POST /api/points/{id}/photo/ — прикрепить фото (бот, Api-Key)
-    - POST /api/points/{id}/like/  — лайк (бот, Api-Key)
-    - POST /api/points/{id}/dislike/ — дизлайк (бот, Api-Key)
-    """
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
 
     queryset = Point.objects.filter(is_active=True)
     permission_classes = [BotOrReadOnly]
@@ -385,6 +393,7 @@ class PointViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post']
 
     def _request_profile(self):
+        """Выполняет операцию серверного компонента GeoMap."""
         if self.request.user.is_authenticated:
             return TelegramProfile.objects.filter(user=self.request.user).first()
         if self.request.headers.get('Authorization', '') != f'Api-Key {settings.BOT_API_KEY}':
@@ -396,6 +405,7 @@ class PointViewSet(viewsets.ModelViewSet):
         return TelegramProfile.objects.filter(telegram_id=telegram_user_id).first()
 
     def get_queryset(self):
+        """Выполняет операцию серверного компонента GeoMap."""
         queryset = super().get_queryset().select_related('point_type')
         profile = self._request_profile()
 
@@ -440,11 +450,13 @@ class PointViewSet(viewsets.ModelViewSet):
         return queryset.distinct()
 
     def get_serializer_class(self):
+        """Выполняет операцию серверного компонента GeoMap."""
         if self.action == 'create':
             return PointCreateSerializer
         return PointSerializer
 
     def get_permissions(self):
+        """Выполняет операцию серверного компонента GeoMap."""
         if self.action == 'deactivate':
             return [CanDeactivatePoint()]
         if self.action in {'like', 'dislike'}:
@@ -452,6 +464,7 @@ class PointViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     def create(self, request, *args, **kwargs):
+        """Выполняет операцию серверного компонента GeoMap."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.validated_data.setdefault(
@@ -467,10 +480,12 @@ class PointViewSet(viewsets.ModelViewSet):
         return Response(PointSerializer(point).data, status=status.HTTP_201_CREATED)
 
     def _get_voter(self, request):
+        """Выполняет операцию серверного компонента GeoMap."""
         profile = self._request_profile()
         return profile.user if profile else None
 
     def _vote(self, request, point, vote_type):
+        """Выполняет операцию серверного компонента GeoMap."""
         user = self._get_voter(request)
         if user is None:
             return Response({'detail': 'Для голосования нужно зарегистрироваться.'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -507,6 +522,7 @@ class PointViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], parser_classes=[MultiPartParser], url_path='photo')
     def upload_photo(self, request, pk=None):
+        """Выполняет операцию серверного компонента GeoMap."""
         point = self.get_object()
         profile = self._request_profile()
         if profile is None:
@@ -523,6 +539,7 @@ class PointViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def deactivate(self, request, pk=None):
+        """Выполняет операцию серверного компонента GeoMap."""
         point = self.get_object()
         if point.point_type.show_on_main_map:
             return Response(
@@ -535,10 +552,12 @@ class PointViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def like(self, request, pk=None):
+        """Выполняет операцию серверного компонента GeoMap."""
         point = self.get_object()
         return self._vote(request, point, PointVote.VoteType.LIKE)
 
     @action(detail=True, methods=['post'])
     def dislike(self, request, pk=None):
+        """Выполняет операцию серверного компонента GeoMap."""
         point = self.get_object()
         return self._vote(request, point, PointVote.VoteType.DISLIKE)

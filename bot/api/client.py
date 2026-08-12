@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 import asyncio
 
 import httpx
@@ -10,7 +12,9 @@ _client: httpx.AsyncClient | None = None
 
 
 class RetryingAsyncClient(httpx.AsyncClient):
+    """Класс, инкапсулирующий логику компонента Telegram-бота."""
     async def request(self, method, url, *args, **kwargs):
+        """Выполняет операцию компонента Telegram-бота."""
         method = method.upper()
         attempts = 3 if method == "GET" else 1
         for attempt in range(attempts):
@@ -28,6 +32,7 @@ class RetryingAsyncClient(httpx.AsyncClient):
 
 
 def _get_client() -> RetryingAsyncClient:
+    """Выполняет операцию компонента Telegram-бота."""
     global _client
     if _client is None or _client.is_closed:
         _client = RetryingAsyncClient(base_url=config.BACKEND_URL, timeout=30)
@@ -35,18 +40,23 @@ def _get_client() -> RetryingAsyncClient:
 
 
 class _ClientContext:
+    """Класс, инкапсулирующий логику компонента Telegram-бота."""
     async def __aenter__(self):
+        """Выполняет операцию компонента Telegram-бота."""
         return _get_client()
 
     async def __aexit__(self, exc_type, exc_value, traceback):
+        """Выполняет операцию компонента Telegram-бота."""
         return False
 
 
 def client_context():
+    """Выполняет операцию компонента Telegram-бота."""
     return _ClientContext()
 
 
 async def close():
+    """Выполняет операцию компонента Telegram-бота."""
     global _client
     if _client is not None and not _client.is_closed:
         await _client.aclose()

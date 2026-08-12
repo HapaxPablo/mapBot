@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 from .client import HEADERS, client_context
 
 
@@ -7,6 +9,7 @@ async def authenticate_telegram_user(
     first_name: str | None,
     last_name: str | None,
 ) -> dict:
+    """Выполняет операцию компонента Telegram-бота."""
     async with client_context() as client:
         response = await client.post(
             "/api/auth/telegram/",
@@ -24,6 +27,7 @@ async def authenticate_telegram_user(
         return response.json()
 
 async def get_telegram_profile(telegram_user_id: int) -> dict | None:
+    """Выполняет операцию компонента Telegram-бота."""
     async with client_context() as client:
         response = await client.get(
             "/api/auth/telegram/profile/",

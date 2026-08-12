@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 from html import escape
 
 from aiogram import F, Router
@@ -38,6 +40,7 @@ router = Router()
 
 @router.message(F.text == ADMIN_BUTTON)
 async def admin_start(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin(message):
         return
     await state.clear()
@@ -50,6 +53,7 @@ async def admin_start(message: Message, state: FSMContext):
 
 @router.message(StateFilter(Admin.menu), F.text == ADMIN_BACK_BUTTON)
 async def admin_back(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     profile = await require_admin(message)
     if not profile:
         await state.clear()
@@ -63,6 +67,7 @@ async def admin_back(message: Message, state: FSMContext):
 
 @router.message(StateFilter(Admin.menu), F.text == ADMIN_USERS_BUTTON)
 async def admin_users_start(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin(message):
         return
     try:
@@ -79,6 +84,7 @@ async def admin_users_start(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith("admin:user:"))
 async def admin_user_selected(callback):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     telegram_id = int(callback.data.split(":", 2)[2])
@@ -105,6 +111,7 @@ async def admin_user_selected(callback):
 
 @router.callback_query(F.data.startswith("admin:user-role:"))
 async def admin_user_role_selected(callback):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     _, _, telegram_id, role = callback.data.split(":", 3)
@@ -121,6 +128,7 @@ async def admin_user_role_selected(callback):
 
 @router.message(StateFilter(Admin.menu), F.text == ADMIN_TYPES_BUTTON)
 async def admin_types_start(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin(message):
         return
     try:
@@ -136,6 +144,7 @@ async def admin_types_start(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "admin:type-add")
 async def admin_type_add(callback, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     await state.set_state(Admin.type_name)
@@ -145,6 +154,7 @@ async def admin_type_add(callback, state: FSMContext):
 
 @router.message(StateFilter(Admin.type_name))
 async def admin_type_name(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     name = (message.text or "").strip()
     if not name:
         await message.answer("Название не может быть пустым. Попробуйте ещё раз:")
@@ -156,6 +166,7 @@ async def admin_type_name(message: Message, state: FSMContext):
 
 @router.message(StateFilter(Admin.type_icon))
 async def admin_type_icon(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     icon_name = (message.text or "").strip()
     if icon_name.casefold() == "пропустить" or not icon_name:
         icon_name = "MapPin"
@@ -172,6 +183,7 @@ async def admin_type_icon(message: Message, state: FSMContext):
 
 @router.callback_query(StateFilter(Admin.type_visibility), F.data.startswith("admin:type-visibility:"))
 async def admin_type_visibility(callback, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     data = await state.get_data()
@@ -192,6 +204,7 @@ async def admin_type_visibility(callback, state: FSMContext):
 
 @router.callback_query(F.data.startswith("admin:type:"))
 async def admin_type_selected(callback):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     point_type_id = int(callback.data.split(":", 2)[2])
@@ -215,6 +228,7 @@ async def admin_type_selected(callback):
 
 @router.callback_query(F.data.startswith("admin:type-edit:"))
 async def admin_type_edit(callback):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     point_type_id = int(callback.data.split(":", 2)[2])
@@ -224,6 +238,7 @@ async def admin_type_edit(callback):
 
 @router.callback_query(F.data.startswith("admin:type-toggle:"))
 async def admin_type_toggle(callback):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     point_type_id = int(callback.data.split(":", 2)[2])
@@ -244,6 +259,7 @@ async def admin_type_toggle(callback):
 
 @router.callback_query(F.data.startswith("admin:type-delete:"))
 async def admin_type_delete(callback):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     point_type_id = int(callback.data.split(":", 2)[2])
@@ -258,6 +274,7 @@ async def admin_type_delete(callback):
 
 @router.callback_query(F.data.startswith("admin:type-edit-field:"))
 async def admin_type_edit_field(callback, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     _, _, point_type_id, field = callback.data.split(":", 3)
@@ -269,6 +286,7 @@ async def admin_type_edit_field(callback, state: FSMContext):
 
 @router.message(StateFilter(Admin.type_edit_value))
 async def admin_type_edit_value(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     value = (message.text or "").strip()
     if not value:
         await message.answer("Значение не может быть пустым. Попробуйте ещё раз:")
@@ -289,6 +307,7 @@ async def admin_type_edit_value(message: Message, state: FSMContext):
 
 @router.message(StateFilter(Admin.menu), F.text == ADMIN_POINTS_BUTTON)
 async def admin_points_start(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin(message):
         return
     try:
@@ -305,6 +324,7 @@ async def admin_points_start(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith("admin:point:"))
 async def admin_point_selected(callback):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     point_id = callback.data.split(":", 2)[2]
@@ -332,6 +352,7 @@ async def admin_point_selected(callback):
 
 @router.callback_query(F.data.startswith("admin:point-toggle:"))
 async def admin_point_toggle(callback):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     point_id = callback.data.split(":", 2)[2]
@@ -352,6 +373,7 @@ async def admin_point_toggle(callback):
 
 @router.callback_query(F.data.startswith("admin:point-edit:"))
 async def admin_point_edit(callback):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     point_id = callback.data.split(":", 2)[2]
@@ -361,6 +383,7 @@ async def admin_point_edit(callback):
 
 @router.callback_query(F.data.startswith("admin:point-photo:"))
 async def admin_point_photo_start(callback, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     point_id = callback.data.split(":", 2)[2]
@@ -372,6 +395,7 @@ async def admin_point_photo_start(callback, state: FSMContext):
 
 @router.message(StateFilter(Admin.point_photo), F.photo)
 async def admin_point_photo_upload(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     data = await state.get_data()
     photo = message.photo[-1]
     try:
@@ -393,11 +417,13 @@ async def admin_point_photo_upload(message: Message, state: FSMContext):
 
 @router.message(StateFilter(Admin.point_photo))
 async def admin_point_photo_invalid(message: Message):
+    """Выполняет операцию компонента Telegram-бота."""
     await message.answer("Пришлите именно фото точки.")
 
 
 @router.callback_query(F.data.startswith("admin:pef:"))
 async def admin_point_edit_field(callback, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     _, _, point_id, field = callback.data.split(":", 3)
@@ -432,6 +458,7 @@ async def admin_point_edit_field(callback, state: FSMContext):
 
 @router.callback_query(F.data.startswith("admin:point-type:"))
 async def admin_point_type_selected(callback):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin_callback(callback):
         return
     _, _, point_id, point_type_id = callback.data.split(":", 3)
@@ -452,6 +479,7 @@ async def admin_point_type_selected(callback):
 
 @router.message(StateFilter(Admin.point_edit_value))
 async def admin_point_edit_value(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     value = (message.text or "").strip()
     data = await state.get_data()
     field = data["point_edit_field"]
@@ -491,6 +519,7 @@ async def admin_point_edit_value(message: Message, state: FSMContext):
 
 @router.message(StateFilter(Admin.menu), F.text == ADMIN_VOTES_BUTTON)
 async def admin_votes_start(message: Message):
+    """Выполняет операцию компонента Telegram-бота."""
     if not await require_admin(message):
         return
     try:

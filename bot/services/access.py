@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 from aiogram.types import Message
 
 import api_client
@@ -6,6 +8,7 @@ from runtime import ADMIN_ROLES, logger
 
 
 async def profile_keyboard(telegram_user_id: int):
+    """Выполняет операцию компонента Telegram-бота."""
     try:
         profile = await api_client.get_telegram_profile(telegram_user_id)
     except Exception:
@@ -15,6 +18,7 @@ async def profile_keyboard(telegram_user_id: int):
 
 
 async def require_admin(message: Message) -> dict | None:
+    """Выполняет операцию компонента Telegram-бота."""
     try:
         profile = await api_client.get_telegram_profile(message.from_user.id)
     except Exception:
@@ -31,6 +35,7 @@ async def require_admin(message: Message) -> dict | None:
 
 
 async def require_admin_callback(callback) -> bool:
+    """Выполняет операцию компонента Telegram-бота."""
     try:
         profile = await api_client.get_telegram_profile(callback.from_user.id)
     except Exception:

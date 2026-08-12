@@ -1,7 +1,10 @@
+"""Компонент Telegram-бота GeoMap."""
+
 from .client import HEADERS, client_context
 
 
 async def get_pending_notifications() -> list[dict]:
+    """Выполняет операцию компонента Telegram-бота."""
     async with client_context() as client:
         response = await client.get("/api/bot/notifications/", headers=HEADERS)
         response.raise_for_status()
@@ -9,6 +12,7 @@ async def get_pending_notifications() -> list[dict]:
 
 
 async def acknowledge_notifications(notification_ids: list[int]) -> None:
+    """Выполняет операцию компонента Telegram-бота."""
     if not notification_ids:
         return
     async with client_context() as client:

@@ -1,4 +1,4 @@
-"""Backward-compatible API facade for bot handlers."""
+"""Компонент Telegram-бота GeoMap."""
 
 from api.admin import (
     admin_change_user_role,

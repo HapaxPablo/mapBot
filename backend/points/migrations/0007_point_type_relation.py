@@ -1,8 +1,11 @@
+"""Миграция схемы данных серверной части GeoMap."""
+
 from django.db import migrations, models
 import django.db.models.deletion
 
 
 def move_point_types(apps, schema_editor):
+    """Создаёт типы точек и переносит к ним существующие записи."""
     Point = apps.get_model('points', 'Point')
     PointType = apps.get_model('points', 'PointType')
     types = {}
@@ -15,6 +18,7 @@ def move_point_types(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    """Описывает операции миграции базы данных."""
     dependencies = [
         ('points', '0006_point_type_and_allowed_users'),
     ]

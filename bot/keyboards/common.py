@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -12,6 +14,7 @@ from runtime import ADMIN_POINTS_BUTTON, ADMIN_VOTES_BUTTON, ADMIN_BACK_BUTTON
 
 
 def main_keyboard(role: str | None = None) -> ReplyKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     keyboard = [[
         KeyboardButton(text="📍 Список точек"),
         KeyboardButton(text="➕ Добавить точку"),
@@ -22,6 +25,7 @@ def main_keyboard(role: str | None = None) -> ReplyKeyboardMarkup:
 
 
 def admin_keyboard() -> ReplyKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=ADMIN_USERS_BUTTON), KeyboardButton(text=ADMIN_TYPES_BUTTON)],
@@ -33,12 +37,14 @@ def admin_keyboard() -> ReplyKeyboardMarkup:
 
 
 def map_keyboard() -> InlineKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text="🗺 Открыть карту", web_app=WebAppInfo(url=config.WEBAPP_URL)),
     ]])
 
 
 def registration_keyboard() -> ReplyKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="✅ Зарегистрироваться")]],
         resize_keyboard=True,

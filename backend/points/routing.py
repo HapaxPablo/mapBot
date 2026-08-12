@@ -1,3 +1,5 @@
+"""Компонент серверной части GeoMap."""
+
 from django.urls import re_path
 
 from points.consumers import PointConsumer

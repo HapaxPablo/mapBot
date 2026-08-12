@@ -1,7 +1,10 @@
+"""Миграция схемы данных серверной части GeoMap."""
+
 from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Описывает операции миграции базы данных."""
     dependencies = [
         ('points', '0005_pointvote'),
         ('users', '0001_initial'),

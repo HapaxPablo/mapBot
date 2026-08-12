@@ -1,7 +1,10 @@
+"""Компонент Telegram-бота GeoMap."""
+
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
 def role_label(role: str) -> str:
+    """Выполняет операцию компонента Telegram-бота."""
     return {
         "admin": "Администратор",
         "superuser": "Суперпользователь",
@@ -11,6 +14,7 @@ def role_label(role: str) -> str:
 
 
 def admin_user_keyboard(users: list[dict]) -> InlineKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(
             text=(user.get("username") or user.get("first_name") or str(user["telegram_id"]))[:60],
@@ -20,6 +24,7 @@ def admin_user_keyboard(users: list[dict]) -> InlineKeyboardMarkup:
 
 
 def admin_type_keyboard(point_types: list[dict], include_add: bool = True) -> InlineKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     rows = [[
         InlineKeyboardButton(
             text=f"{point_type['name']} ({'общая карта' if point_type['show_on_main_map'] else 'спец. слой'})"[:64],
@@ -32,6 +37,7 @@ def admin_type_keyboard(point_types: list[dict], include_add: bool = True) -> In
 
 
 def admin_point_keyboard(points: list[dict]) -> InlineKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(
             text=f"{'✅' if point['is_active'] else '⛔'} {point['title']}"[:64],
@@ -41,6 +47,7 @@ def admin_point_keyboard(points: list[dict]) -> InlineKeyboardMarkup:
 
 
 def admin_user_roles_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text=label, callback_data=f"admin:user-role:{telegram_id}:{role}")
     ] for role, label in (
@@ -52,6 +59,7 @@ def admin_user_roles_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
 
 
 def admin_type_actions_keyboard(point_type_id: int) -> InlineKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✏️ Редактировать", callback_data=f"admin:type-edit:{point_type_id}")],
         [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"admin:type-delete:{point_type_id}")],
@@ -59,6 +67,7 @@ def admin_type_actions_keyboard(point_type_id: int) -> InlineKeyboardMarkup:
 
 
 def admin_type_edit_keyboard(point_type_id: int) -> InlineKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Название", callback_data=f"admin:type-edit-field:{point_type_id}:name")],
         [InlineKeyboardButton(text="Иконка", callback_data=f"admin:type-edit-field:{point_type_id}:icon_name")],
@@ -67,6 +76,7 @@ def admin_type_edit_keyboard(point_type_id: int) -> InlineKeyboardMarkup:
 
 
 def admin_point_actions_keyboard(point_id: str) -> InlineKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✏️ Редактировать", callback_data=f"admin:point-edit:{point_id}")],
         [InlineKeyboardButton(text="🔃 Изменить активность", callback_data=f"admin:point-toggle:{point_id}")],
@@ -75,6 +85,7 @@ def admin_point_actions_keyboard(point_id: str) -> InlineKeyboardMarkup:
 
 
 def admin_point_edit_keyboard(point_id: str) -> InlineKeyboardMarkup:
+    """Выполняет операцию компонента Telegram-бота."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Название", callback_data=f"admin:pef:{point_id}:title")],
         [InlineKeyboardButton(text="Описание", callback_data=f"admin:pef:{point_id}:description")],

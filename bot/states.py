@@ -1,7 +1,10 @@
+"""Компонент Telegram-бота GeoMap."""
+
 from aiogram.fsm.state import State, StatesGroup
 
 
 class AddPoint(StatesGroup):
+    """Класс, инкапсулирующий логику компонента Telegram-бота."""
     point_type = State()
     title = State()
     description = State()
@@ -10,10 +13,12 @@ class AddPoint(StatesGroup):
 
 
 class PointsList(StatesGroup):
+    """Класс, инкапсулирующий логику компонента Telegram-бота."""
     scope = State()
 
 
 class Admin(StatesGroup):
+    """Класс, инкапсулирующий логику компонента Telegram-бота."""
     menu = State()
     users = State()
     type_name = State()

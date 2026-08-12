@@ -1,7 +1,10 @@
+"""Миграция схемы данных серверной части GeoMap."""
+
 from django.db import migrations
 
 
 def move_profiles(apps, schema_editor):
+    """Переносит профили Telegram в приложение пользователей."""
     OldProfile = apps.get_model('points', 'TelegramProfile')
     NewProfile = apps.get_model('users', 'TelegramProfile')
 
@@ -26,6 +29,7 @@ def move_profiles(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    """Описывает операции миграции базы данных."""
     dependencies = [
         ('points', '0003_telegramprofile_phone_number'),
         ('users', '0001_initial'),

@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 from aiogram import F, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
@@ -29,6 +31,7 @@ router = Router()
 
 @router.message(F.text == "➕ Добавить точку")
 async def add_point_start(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     try:
         point_types = await api_client.list_point_types()
     except Exception:
@@ -55,6 +58,7 @@ async def add_point_start(message: Message, state: FSMContext):
 
 @router.callback_query(StateFilter(AddPoint.point_type), F.data.startswith("add_point_type:"))
 async def add_point_type(callback, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     type_id = callback.data.split(":", 1)[1]
     data = await state.get_data()
     point_type = data.get("point_types", {}).get(type_id)
@@ -74,6 +78,7 @@ async def add_point_type(callback, state: FSMContext):
 
 @router.message(StateFilter(AddPoint.title))
 async def add_point_title(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     title = (message.text or "").strip()
     if not title:
         await message.answer("Название должно быть непустым текстом. Попробуйте ещё раз:")
@@ -92,6 +97,7 @@ async def add_point_title(message: Message, state: FSMContext):
 
 @router.message(StateFilter(AddPoint.description), F.text.lower() == "пропустить")
 async def add_point_skip_description(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     await state.update_data(description=None)
     await state.set_state(AddPoint.location)
     await message.answer(
@@ -103,6 +109,7 @@ async def add_point_skip_description(message: Message, state: FSMContext):
 
 @router.message(StateFilter(AddPoint.description))
 async def add_point_description(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     description = (message.text or "").strip()
     if not description:
         await message.answer("Описание должно быть текстом или нажмите «Пропустить».")
@@ -118,6 +125,7 @@ async def add_point_description(message: Message, state: FSMContext):
 
 @router.message(StateFilter(AddPoint.location), F.location)
 async def add_point_location(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     await state.update_data(
         lat=message.location.latitude,
         lng=message.location.longitude,
@@ -131,11 +139,13 @@ async def add_point_location(message: Message, state: FSMContext):
 
 @router.message(StateFilter(AddPoint.location))
 async def add_point_location_invalid(message: Message):
+    """Выполняет операцию компонента Telegram-бота."""
     await message.answer("Нужно отправить именно геолокацию (Скрепка → Геопозиция).")
 
 
 @router.message(StateFilter(AddPoint.photo), F.photo)
 async def add_point_photo(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     data = await state.get_data()
     photo = message.photo[-1]
     if photo.file_size and photo.file_size > 10 * 1024 * 1024:
@@ -177,11 +187,13 @@ async def add_point_photo(message: Message, state: FSMContext):
 
 @router.message(StateFilter(AddPoint.photo))
 async def add_point_photo_invalid(message: Message):
+    """Выполняет операцию компонента Telegram-бота."""
     await message.answer("Пришлите фото точки.")
 
 
 @router.message(F.text == "📍 Список точек")
 async def points_list(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     await state.set_state(PointsList.scope)
     await message.answer(
         "📍 Какой список точек открыть?",
@@ -190,6 +202,7 @@ async def points_list(message: Message, state: FSMContext):
 
 
 async def send_points_list(message: Message, scope: str, telegram_user_id: int | None = None):
+    """Выполняет операцию компонента Telegram-бота."""
     points = await api_client.list_points(scope=scope, telegram_user_id=telegram_user_id)
     buttons = [[
         InlineKeyboardButton(
@@ -206,6 +219,7 @@ async def send_points_list(message: Message, scope: str, telegram_user_id: int |
 
 @router.message(StateFilter(PointsList.scope), F.text == POINTS_COMMON_BUTTON)
 async def common_points_list(message: Message):
+    """Выполняет операцию компонента Telegram-бота."""
     try:
         await send_points_list(message, "common")
     except Exception:
@@ -215,6 +229,7 @@ async def common_points_list(message: Message):
 
 @router.message(StateFilter(PointsList.scope), F.text == POINTS_PERSONAL_BUTTON)
 async def personal_points_list(message: Message):
+    """Выполняет операцию компонента Telegram-бота."""
     try:
         profile = await api_client.get_telegram_profile(message.from_user.id)
         if not profile or profile.get("role") == "new_member":
@@ -228,6 +243,7 @@ async def personal_points_list(message: Message):
 
 @router.message(StateFilter(PointsList.scope), F.text == POINTS_BACK_BUTTON)
 async def points_list_back(message: Message, state: FSMContext):
+    """Выполняет операцию компонента Telegram-бота."""
     await state.clear()
     await message.answer(
         "Главное меню.",

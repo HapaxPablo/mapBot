@@ -1,3 +1,5 @@
+"""Компонент серверной части GeoMap."""
+
 import logging
 
 from asgiref.sync import async_to_sync
@@ -15,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def safe_notify_admins(message):
+    """Выполняет операцию серверного компонента GeoMap."""
     try:
         notify_admins(message)
     except Exception:
@@ -22,6 +25,7 @@ def safe_notify_admins(message):
 
 
 def safe_notify_map_users(profiles, message):
+    """Выполняет операцию серверного компонента GeoMap."""
     try:
         notify_map_users(profiles, message)
     except Exception:
@@ -29,6 +33,7 @@ def safe_notify_map_users(profiles, message):
 
 
 def notify_points_changed():
+    """Выполняет операцию серверного компонента GeoMap."""
     try:
         channel_layer = get_channel_layer()
         if channel_layer is not None:
@@ -42,6 +47,7 @@ def notify_points_changed():
 
 @receiver(post_save, sender=Point)
 def point_saved(sender, instance, created, **kwargs):
+    """Выполняет операцию серверного компонента GeoMap."""
     transaction.on_commit(notify_points_changed)
     if created:
         message = (
@@ -55,6 +61,7 @@ def point_saved(sender, instance, created, **kwargs):
 
 @receiver(pre_save, sender=Point)
 def delete_replaced_point_photo(sender, instance, **kwargs):
+    """Выполняет операцию серверного компонента GeoMap."""
     if not instance.pk:
         return
     try:
@@ -70,6 +77,7 @@ def delete_replaced_point_photo(sender, instance, **kwargs):
 
 @receiver(m2m_changed, sender=Point.allowed_users.through)
 def point_access_changed(action, instance, pk_set, **kwargs):
+    """Выполняет операцию серверного компонента GeoMap."""
     transaction.on_commit(notify_points_changed)
     if action in {'post_add', 'post_remove', 'post_clear'}:
         transaction.on_commit(
@@ -87,4 +95,5 @@ def point_access_changed(action, instance, pk_set, **kwargs):
 
 @receiver(post_save, sender=PointType)
 def point_type_saved(**kwargs):
+    """Выполняет операцию серверного компонента GeoMap."""
     transaction.on_commit(notify_points_changed)

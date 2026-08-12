@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 from .client import HEADERS, client_context
 
 
@@ -12,6 +14,7 @@ async def create_point(
     photo_bytes: bytes | None = None,
     filename: str = "point.jpg",
 ) -> dict:
+    """Выполняет операцию компонента Telegram-бота."""
     payload = {
         "title": title,
         "lat": lat,
@@ -42,6 +45,7 @@ async def create_point(
         return response.json()
 
 async def list_point_types() -> list[dict]:
+    """Выполняет операцию компонента Telegram-бота."""
     async with client_context() as client:
         response = await client.get("/api/point-types/")
         response.raise_for_status()
@@ -55,6 +59,7 @@ async def upload_photo(
     filename: str,
     telegram_user_id: int,
 ) -> dict:
+    """Выполняет операцию компонента Telegram-бота."""
     async with client_context() as client:
         response = await client.post(
             f"/api/points/{point_id}/photo/",
@@ -70,6 +75,7 @@ async def list_points(
     scope: str = "common",
     telegram_user_id: int | None = None,
 ) -> list[dict]:
+    """Выполняет операцию компонента Telegram-бота."""
     async with client_context() as client:
         params = {}
         if scope == "personal":
@@ -83,6 +89,7 @@ async def list_points(
 
 
 async def get_point(point_id: str, telegram_user_id: int | None = None) -> dict:
+    """Выполняет операцию компонента Telegram-бота."""
     async with client_context() as client:
         params = {}
         if telegram_user_id is not None:
@@ -97,6 +104,7 @@ async def get_point(point_id: str, telegram_user_id: int | None = None) -> dict:
 
 
 async def vote(point_id: str, telegram_user_id: int, vote_type: str) -> dict:
+    """Выполняет операцию компонента Telegram-бота."""
     async with client_context() as client:
         response = await client.post(
             f"/api/points/{point_id}/{vote_type}/",

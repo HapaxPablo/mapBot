@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 import logging
 
 from aiogram import Bot, Dispatcher

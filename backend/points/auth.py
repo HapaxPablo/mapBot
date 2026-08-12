@@ -1,3 +1,5 @@
+"""Компонент серверной части GeoMap."""
+
 import hashlib
 import hmac
 import time
@@ -13,7 +15,7 @@ from users.notifications import notify_admins
 
 
 def telegram_webapp_user(init_data: str) -> dict:
-    """Validate Telegram WebApp initData and return its user payload."""
+    """Выполняет операцию серверного компонента GeoMap."""
     values = dict(parse_qsl(init_data, keep_blank_values=True))
     received_hash = values.pop('hash', '')
     if not received_hash or not settings.BOT_TOKEN:
@@ -57,6 +59,7 @@ def telegram_webapp_user(init_data: str) -> dict:
 def authenticate_telegram_user(*, telegram_id: int, username: str = '',
                                first_name: str = '', last_name: str = '',
                                rotate_token: bool = False):
+    """Выполняет операцию серверного компонента GeoMap."""
     profile = TelegramProfile.objects.select_for_update().filter(telegram_id=telegram_id).first()
     if profile is None:
         user = User.objects.create_user(

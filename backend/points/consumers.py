@@ -1,3 +1,5 @@
+"""Компонент серверной части GeoMap."""
+
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from rest_framework.authtoken.models import Token
@@ -10,7 +12,9 @@ from users.models import TelegramProfile
 
 
 class PointConsumer(AsyncJsonWebsocketConsumer):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     async def connect(self):
+        """Выполняет операцию серверного компонента GeoMap."""
         self.profile = None
         self.scope = 'all'
         self.point_type = None
@@ -20,12 +24,15 @@ class PointConsumer(AsyncJsonWebsocketConsumer):
         await self.send_points(scope='all')
 
     async def disconnect(self, close_code):
+        """Выполняет операцию серверного компонента GeoMap."""
         await self.channel_layer.group_discard('points', self.channel_name)
 
     async def points_changed(self, event):
+        """Выполняет операцию серверного компонента GeoMap."""
         await self.send_points(scope=self.scope, point_type=self.point_type)
 
     async def receive_json(self, content, **kwargs):
+        """Выполняет операцию серверного компонента GeoMap."""
         if not isinstance(content, dict):
             await self.send_json({'type': 'error', 'detail': 'Invalid message.'})
             return
@@ -68,6 +75,7 @@ class PointConsumer(AsyncJsonWebsocketConsumer):
         await self.send_points(scope, content.get('point_type'))
 
     async def send_points(self, scope='all', point_type=None):
+        """Выполняет операцию серверного компонента GeoMap."""
         points = await self.get_points(scope, point_type, self.bounds)
         await self.send_json({
             'type': 'points',
@@ -78,6 +86,7 @@ class PointConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def get_profile(self, token_key):
+        """Выполняет операцию серверного компонента GeoMap."""
         if not token_key:
             return None
         token = Token.objects.select_related('user__telegram_profile').filter(key=token_key).first()
@@ -88,6 +97,7 @@ class PointConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def get_points(self, scope, point_type, bounds=None):
+        """Выполняет операцию серверного компонента GeoMap."""
         queryset = Point.objects.filter(is_active=True).select_related('point_type')
         if scope == 'personal':
             if self.profile is None:

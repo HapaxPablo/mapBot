@@ -1,9 +1,12 @@
+"""Компонент серверной части GeoMap."""
+
 import math
 
 from django.db.models import Q
 
 
 def parse_bounds(value):
+    """Выполняет операцию серверного компонента GeoMap."""
     if isinstance(value, str):
         parts = [part.strip() for part in value.split(',')]
         if len(parts) != 4:
@@ -29,6 +32,7 @@ def parse_bounds(value):
 
 
 def filter_by_bounds(queryset, bounds):
+    """Выполняет операцию серверного компонента GeoMap."""
     queryset = queryset.filter(
         lat__gte=bounds['south'],
         lat__lte=bounds['north'],

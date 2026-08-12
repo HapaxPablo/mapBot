@@ -1,3 +1,5 @@
+"""Компонент серверной части GeoMap."""
+
 import uuid
 from datetime import timedelta as td
 
@@ -8,11 +10,12 @@ from django_minio_backend import MinioBackend
 
 
 def photo_path(instance, filename):
+    """Выполняет операцию серверного компонента GeoMap."""
     return f'points/{instance.id}/{filename}'
 
 
 class Point(models.Model):
-    """Метка на карте, добавленная через Telegram-бота."""
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
 
     id = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False,
@@ -50,6 +53,7 @@ class Point(models.Model):
     created = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
 
     class Meta:
+        """Класс, инкапсулирующий логику серверного компонента GeoMap."""
         db_table = 'points'
         ordering = ('-created',)
         verbose_name = 'Точка'
@@ -71,10 +75,12 @@ class Point(models.Model):
         ]
 
     def __str__(self):
+        """Выполняет операцию серверного компонента GeoMap."""
         return self.title
 
     @property
     def photo_url(self):
+        """Выполняет операцию серверного компонента GeoMap."""
         if not self.photo:
             return None
         from api_helpers import get_minio_client

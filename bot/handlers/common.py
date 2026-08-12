@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import Message
@@ -12,6 +14,7 @@ router = Router()
 
 @router.message(Command("start"))
 async def start(message: Message):
+    """Выполняет операцию компонента Telegram-бота."""
     try:
         profile = await api_client.get_telegram_profile(message.from_user.id)
     except Exception:
@@ -32,6 +35,7 @@ async def start(message: Message):
 
 @router.message(F.text == "✅ Зарегистрироваться")
 async def register_user(message: Message):
+    """Выполняет операцию компонента Telegram-бота."""
     try:
         auth = await api_client.authenticate_telegram_user(
             telegram_id=message.from_user.id,

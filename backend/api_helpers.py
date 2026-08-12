@@ -1,9 +1,11 @@
+"""Компонент серверной части GeoMap."""
+
 from functools import lru_cache
 
 
 @lru_cache(maxsize=2)
 def get_minio_client(external=False):
-    """Авторизует клиент для обращений к MinIO (как в rmc_rest_api/api/constants.py)."""
+    """Выполняет операцию серверного компонента GeoMap."""
     from minio import Minio
     from django.conf import settings
 

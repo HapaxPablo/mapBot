@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 import asyncio
 
 from main import main

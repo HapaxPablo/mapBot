@@ -1,3 +1,5 @@
+"""Компонент Telegram-бота GeoMap."""
+
 import re
 from html import escape
 
@@ -13,6 +15,7 @@ router = Router()
 
 @router.callback_query(F.data.startswith("point:"))
 async def point_info(callback):
+    """Выполняет операцию компонента Telegram-бота."""
     point_id = callback.data.split(":", 1)[1]
     try:
         point = await api_client.get_point(point_id, callback.from_user.id)
@@ -38,6 +41,7 @@ async def point_info(callback):
 
 @router.callback_query(F.data.startswith("vote:"))
 async def point_vote(callback):
+    """Выполняет операцию компонента Telegram-бота."""
     _, vote_type, point_id = callback.data.split(":", 2)
     try:
         result = await api_client.vote(

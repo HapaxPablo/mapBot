@@ -1,3 +1,5 @@
+"""Компонент серверной части GeoMap."""
+
 from rest_framework import serializers
 
 from points.models import Point, PointType
@@ -9,6 +11,7 @@ ALLOWED_POINT_PHOTO_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 
 
 def validate_point_photo(photo):
+    """Выполняет операцию серверного компонента GeoMap."""
     if photo.size > MAX_POINT_PHOTO_SIZE:
         raise serializers.ValidationError('Фото не должно быть больше 10 МБ.')
     if getattr(photo, 'content_type', None) not in ALLOWED_POINT_PHOTO_TYPES:
@@ -26,19 +29,24 @@ def validate_point_photo(photo):
 
 
 class PointTypeSerializer(serializers.ModelSerializer):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     class Meta:
+        """Класс, инкапсулирующий логику серверного компонента GeoMap."""
         model = PointType
         fields = ('id', 'name')
         read_only_fields = fields
 
 
 class AdminPointTypeSerializer(serializers.ModelSerializer):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     class Meta:
+        """Класс, инкапсулирующий логику серверного компонента GeoMap."""
         model = PointType
         fields = ('id', 'name', 'icon_name', 'show_on_main_map')
 
 
 class AdminPointSerializer(serializers.ModelSerializer):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     description = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -54,6 +62,7 @@ class AdminPointSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
+        """Класс, инкапсулирующий логику серверного компонента GeoMap."""
         model = Point
         fields = (
             'id', 'title', 'description', 'lat', 'lng', 'point_type',
@@ -66,15 +75,18 @@ class AdminPointSerializer(serializers.ModelSerializer):
         )
 
     def get_allowed_user_ids(self, obj):
+        """Выполняет операцию серверного компонента GeoMap."""
         return list(obj.allowed_users.values_list('telegram_id', flat=True))
 
     def validate_allowed_users(self, value):
+        """Выполняет операцию серверного компонента GeoMap."""
         profiles = TelegramProfile.objects.filter(telegram_id__in=value)
         if profiles.count() != len(set(value)):
             raise serializers.ValidationError('Один или несколько пользователей не найдены.')
         return value
 
     def update(self, instance, validated_data):
+        """Выполняет операцию серверного компонента GeoMap."""
         allowed_user_ids = validated_data.pop('allowed_users', None)
         instance = super().update(instance, validated_data)
         if allowed_user_ids is not None:
@@ -84,9 +96,11 @@ class AdminPointSerializer(serializers.ModelSerializer):
 
 
 class AdminUserSerializer(serializers.ModelSerializer):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     user_id = serializers.IntegerField(source='user.id', read_only=True)
 
     class Meta:
+        """Класс, инкапсулирующий логику серверного компонента GeoMap."""
         model = TelegramProfile
         fields = (
             'user_id', 'telegram_id', 'username', 'first_name', 'last_name',
@@ -99,6 +113,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
 
 class TelegramAuthSerializer(serializers.Serializer):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     telegram_id = serializers.IntegerField(min_value=1)
     username = serializers.CharField(required=False, allow_blank=True, max_length=255)
     first_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
@@ -106,24 +121,29 @@ class TelegramAuthSerializer(serializers.Serializer):
 
 
 class TelegramWebAppAuthSerializer(serializers.Serializer):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     init_data = serializers.CharField(max_length=4096)
 
 
 class TelegramUserSerializer(serializers.ModelSerializer):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     user_id = serializers.IntegerField(source='user.id', read_only=True)
 
     class Meta:
+        """Класс, инкапсулирующий логику серверного компонента GeoMap."""
         model = TelegramProfile
         fields = ('user_id', 'telegram_id', 'username', 'first_name', 'last_name', 'role')
         read_only_fields = fields
 
 
 class PointSerializer(serializers.ModelSerializer):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     photo_url = serializers.ReadOnlyField()
     point_type = serializers.CharField(source='point_type.name', read_only=True)
     point_type_icon = serializers.CharField(source='point_type.icon_name', read_only=True)
 
     class Meta:
+        """Класс, инкапсулирующий логику серверного компонента GeoMap."""
         model = Point
         fields = (
             'id', 'title', 'description', 'lat', 'lng', 'point_type', 'point_type_icon',
@@ -136,6 +156,7 @@ class PointSerializer(serializers.ModelSerializer):
 
 
 class PointCreateSerializer(serializers.ModelSerializer):
+    """Класс, инкапсулирующий логику серверного компонента GeoMap."""
     description = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -149,9 +170,11 @@ class PointCreateSerializer(serializers.ModelSerializer):
     photo = serializers.FileField(write_only=True, required=True)
 
     def validate_photo(self, value):
+        """Выполняет операцию серверного компонента GeoMap."""
         return validate_point_photo(value)
 
     class Meta:
+        """Класс, инкапсулирующий логику серверного компонента GeoMap."""
         model = Point
         fields = (
             'id', 'title', 'description', 'lat', 'lng', 'point_type',
